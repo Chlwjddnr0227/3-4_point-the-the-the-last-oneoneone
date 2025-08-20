@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포인트 관리 시스템</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-top">
+                <div class="header-content">
+                    <h1><i class="fas fa-coins"></i> 포인트 관리</h1>
+                    <p>포인트 적립과 사용을 체계적으로 관리하세요</p>
+                </div>
+                <div class="header-actions">
+                    <!-- 로그인하지 않은 상태 -->
+                    <div id="guestActions" class="auth-actions">
+                        <button id="loginBtn" class="login-btn">
+                            <i class="fas fa-sign-in-alt"></i> 로그인
+                        </button>
+                    </div>
+                    
+                    <!-- 로그인된 상태 -->
+                    <div id="userActions" class="auth-actions hidden">
+                        <div class="user-info">
+                            <span class="username" id="headerUsername">사용자</span>
+                            <span class="user-points" id="headerUserPoints">0P</span>
+                        </div>
+                        <button id="logoutBtn" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> 로그아웃
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <!-- 맨 왼쪽 컬럼: 룰렛 도박 시스템 -->
+            <div class="roulette-column">
+                <div class="roulette-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-dice"></i> 포인트 룰렛
+                    </h3>
+                    
+                    <div class="roulette-info">
+                        <div class="weekly-limit">
+                            <span class="limit-text">이번 주 남은 횟수:</span>
+                            <span class="limit-count" id="weeklyLimitCount">3</span>
+                        </div>
+                        <div class="reset-info">
+                            <small>매주 월요일 00:00에 초기화</small>
+                        </div>
+                    </div>
+                    
+                    <div class="roulette-wheel" id="rouletteWheel">
+                        <div class="wheel-center">
+                            <i class="fas fa-dice"></i>
+                        </div>
+                        <div class="wheel-numbers">
+                            <div class="wheel-number" data-multiplier="2">2배</div>
+                            <div class="wheel-number" data-multiplier="3">3배</div>
+                            <div class="wheel-number" data-multiplier="5">5배</div>
+                            <div class="wheel-number" data-multiplier="7">7배</div>
+                            <div class="wheel-number" data-multiplier="10">10배</div>
+                            <div class="wheel-number" data-multiplier="15">15배</div>
+                        </div>
+                    </div>
+                    
+                    <div class="roulette-controls">
+                        <div class="bet-input">
+                            <label for="betAmount">베팅 포인트</label>
+                            <input type="number" id="betAmount" placeholder="베팅할 포인트를 입력하세요" min="1" max="999999">
+                        </div>
+                        
+                        <div class="prediction-input">
+                            <label for="predictedNumber">예측 숫자</label>
+                            <select id="predictedNumber">
+                                <option value="">숫자를 선택하세요</option>
+                                <option value="2">2배 (50% 확률)</option>
+                                <option value="3">3배 (30% 확률)</option>
+                                <option value="5">5배 (15% 확률)</option>
+                                <option value="7">7배 (3% 확률)</option>
+                                <option value="10">10배 (1.5% 확률)</option>
+                                <option value="15">15배 (0.5% 확률)</option>
+                            </select>
+                        </div>
+                        
+                        <button id="spinRouletteBtn" class="spin-btn">
+                            <i class="fas fa-play"></i> 룰렛 돌리기
+                        </button>
+                    </div>
+                    
+                    <div class="roulette-result" id="rouletteResult">
+                        <!-- 룰렛 결과가 여기에 표시됩니다 -->
+                    </div>
+                    
+                    <div class="roulette-history">
+                        <h4 class="history-title">
+                            <i class="fas fa-history"></i> 최근 기록
+                        </h4>
+                        <div class="history-list" id="rouletteHistory">
+                            <!-- 룰렛 기록이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 중앙 컬럼: 포인트 관리 -->
+            <div class="center-column">
+                <div class="balance-section">
+                    <div class="balance-card">
+                        <div class="balance-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="balance-info">
+                            <h2>현재 포인트</h2>
+                            <div class="balance-amount" id="currentBalance">0</div>
+                            <span class="balance-unit">P</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="input-section">
+                    <div class="input-tabs">
+                        <button class="tab-btn active" data-tab="earn">
+                            <i class="fas fa-plus-circle"></i> 포인트 적립
+                        </button>
+                        <button class="tab-btn" data-tab="spend">
+                            <i class="fas fa-minus-circle"></i> 포인트 사용
+                        </button>
+                    </div>
+                    
+                    <div class="input-form" id="earnForm">
+                        <div class="form-group">
+                            <label for="earnReason">적립 사유</label>
+                            <input type="text" id="earnReason" placeholder="예: 헌혈 참여, 봉사상 받음, 친구의 청소 도와주기 등" maxlength="100">
+                        </div>
+                        <div class="form-group">
+                            <label for="earnAmount">적립 포인트</label>
+                            <input type="number" id="earnAmount" placeholder="적립할 포인트를 입력하세요" min="1" max="999999">
+                        </div>
+                        <button id="addEarnBtn" class="submit-btn earn-btn">
+                            <i class="fas fa-plus"></i> 적립하기
+                        </button>
+                    </div>
+                    
+                    <div class="input-form hidden" id="spendForm">
+                        <div class="form-group">
+                            <label for="spendAmount">사용 포인트</label>
+                            <input type="number" id="spendAmount" placeholder="사용할 포인트를 입력하세요" min="1" max="999999">
+                        </div>
+                        <div class="form-group">
+                            <label for="spendReason">사용 사유</label>
+                            <input type="text" id="spendReason" placeholder="예: 상품 구매, 서비스 이용, 선물하기 등" maxlength="100">
+                        </div>
+                        <button id="addSpendBtn" class="submit-btn spend-btn">
+                            <i class="fas fa-minus"></i> 사용하기
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalEarned">0</span>
+                        <span class="stat-label">총 적립</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalSpent">0</span>
+                        <span class="stat-label">총 사용</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="transactionCount">0</span>
+                        <span class="stat-label">거래 횟수</span>
+                    </div>
+                </div>
+                
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="all">전체</button>
+                    <button class="filter-btn" data-filter="earn">적립</button>
+                    <button class="filter-btn" data-filter="spend">사용</button>
+                </div>
+                
+                <div class="transactions-container">
+                    <h3 class="section-title">거래 내역</h3>
+                    <div class="transactions-list" id="transactionsList">
+                        <!-- 거래 내역이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+                
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-receipt"></i>
+                    <h3>거래 내역이 없습니다</h3>
+                    <p>첫 번째 포인트 거래를 시작해보세요!</p>
+                </div>
+            </div>
+            
+            <!-- 오른쪽 컬럼: 실시간 포인트 거래 로그 -->
+            <div class="right-column">
+                <div class="activity-log-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-comments"></i> 실시간 활동 로그
+                    </h3>
+                    
+                    <div class="log-info">
+                        <span class="online-users" id="onlineUsers">온라인: 0명</span>
+                        <span class="last-update" id="lastUpdate">마지막 업데이트: 방금 전</span>
+                    </div>
+                    
+                    <div class="activity-feed" id="activityFeed">
+                        <!-- 실시간 활동 로그가 여기에 동적으로 추가됩니다 -->
+                    </div>
+                    
+                    <div class="empty-activity" id="emptyActivity">
+                        <i class="fas fa-comment-slash"></i>
+                        <h4>아직 활동이 없습니다</h4>
+                        <p>첫 번째 포인트 거래를 시작해보세요!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="script.js"></script>
+</body>
+</html>
