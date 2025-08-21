@@ -4,6 +4,10 @@
     box-sizing: border-box;
 }
 
+.hidden {
+    display: none !important;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -171,6 +175,75 @@ body {
     font-weight: bold;
     color: #b8860b;
     margin-left: 5px;
+}
+
+/* 야간 자율 학습 섹션 */
+.self-study-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.self-study-section .section-title {
+    padding: 0 0 15px 0;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.self-study-section .section-title i {
+    color: #ff6347;
+}
+
+.day-selector {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.day-btn {
+    flex-grow: 1;
+    padding: 12px 10px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    background: white;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.day-btn:hover {
+    border-color: #ff6347;
+    color: #ff6347;
+}
+
+.day-btn.active {
+    background: #ff6347;
+    color: white;
+    border-color: #ff6347;
+}
+
+.earn-study-btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.earn-study-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.2);
 }
 
 .input-section {
@@ -350,6 +423,7 @@ body {
 
 .transactions-container {
     background: white;
+    padding: 25px;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     overflow: hidden;
@@ -365,6 +439,8 @@ body {
 
 .transactions-list {
     padding: 0;
+    max-height: 300px; /* Adjust as needed */
+    overflow-y: auto;
 }
 
 .transaction-item {
@@ -512,14 +588,90 @@ body {
 /* 3열 레이아웃 */
 .main-content {
     display: grid;
-    grid-template-columns: 300px 1fr 350px;
+    grid-template-columns: 250px 1fr 350px; /* Adjusted for new column */
     gap: 30px;
     align-items: start;
 }
 
-.roulette-column {
+.users-points-column {
     position: sticky;
     top: 20px;
+}
+
+.users-points-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    padding: 25px;
+}
+
+.users-points-section .section-title {
+    color: #333;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.users-points-section .section-title i {
+    color: #667eea;
+}
+
+.users-points-section .table-container {
+    max-height: 500px; /* 원하는 높이로 조절 가능 */
+    overflow-y: auto;
+}
+
+#usersPointsTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#usersPointsTable th, #usersPointsTable td {
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#usersPointsTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#usersPointsTable td {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+#usersPointsTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#usersPointsTable td:last-child {
+    text-align: right;
+    font-weight: bold;
+}
+
+.adjust-btn {
+    background: #ffc107;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.adjust-btn:hover {
+    background: #e0a800;
 }
 
 .center-column {
@@ -533,176 +685,267 @@ body {
     top: 20px;
 }
 
-/* 룰렛 섹션 */
-.roulette-section {
+/* 왼쪽 컬럼: 잭팟 시스템 */
+.jackpot-section {
     background: white;
     border-radius: 15px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     overflow: hidden;
     padding: 25px;
+    text-align: center;
+    margin-top: 30px; /* Added margin to separate from users points table */
 }
 
-.roulette-section .section-title {
+.jackpot-section .section-title {
     color: #333;
     font-size: 1.3rem;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
     margin-bottom: 20px;
     padding-bottom: 15px;
     border-bottom: 2px solid #f0f0f0;
 }
 
-.roulette-section .section-title i {
-    color: #e74c3c;
+.jackpot-section .section-title i {
+    color: #ffd700;
 }
 
-/* 룰렛 정보 */
-.roulette-info {
-    background: #f8f9fa;
-    padding: 15px;
+.jackpot-display {
+    background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    padding: 20px;
     border-radius: 10px;
     margin-bottom: 20px;
-    text-align: center;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.weekly-limit {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+.jackpot-display h4 {
+    margin-bottom: 5px;
+    color: #666;
+    font-size: 1rem;
 }
 
-.limit-text {
-    font-weight: 600;
-    color: #333;
-}
-
-.limit-count {
-    background: #e74c3c;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 15px;
+.jackpot-display p {
+    font-size: 2.5rem;
     font-weight: bold;
-    font-size: 1.1rem;
+    color: #e74c3c;
+    margin-bottom: 5px;
 }
 
-.reset-info small {
+.jackpot-display small {
     color: #666;
     font-size: 0.8rem;
 }
 
-/* 룰렛 휠 */
-.roulette-wheel {
-    position: relative;
-    width: 200px;
-    height: 200px;
-    margin: 0 auto 25px;
-    border-radius: 50%;
-    background: conic-gradient(
-        #e74c3c 0deg 60deg,
-        #f39c12 60deg 120deg,
-        #f1c40f 120deg 180deg,
-        #27ae60 180deg 240deg,
-        #3498db 240deg 300deg,
-        #9b59b6 300deg 360deg
-    );
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    transition: transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.roulette-wheel.spinning {
-    animation: spin 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.wheel-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 40px;
-    height: 40px;
-    background: white;
-    border-radius: 50%;
+.jackpot-scroller-container {
     display: flex;
-    align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    z-index: 10;
+    align-items: center;
+    height: 80px; /* Height of each scroller */
+    margin-bottom: 20px;
+    overflow: hidden;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    background-color: #f0f0f0;
 }
 
-.wheel-center i {
-    color: #e74c3c;
-    font-size: 1.2rem;
+.jackpot-scroller {
+    width: 60px; /* Width of each scroller */
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+    border-left: 1px solid #eee;
+    border-right: 1px solid #eee;
 }
 
-.wheel-numbers {
+.jackpot-scroller:first-child {
+    border-left: none;
+}
+
+.jackpot-scroller:last-child {
+    border-right: none;
+}
+
+.jackpot-scroller .number-list {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    height: 100%;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    transition: transform 0.1s linear; /* For smooth scrolling */
 }
 
-.wheel-number {
-    position: absolute;
-    width: 60px;
-    height: 20px;
-    background: rgba(255,255,255,0.9);
-    border: 2px solid #333;
+.jackpot-scroller.spinning .number-list {
+    animation: jackpotSpin 1s infinite linear; /* Continuous spin */
+}
+
+@keyframes jackpotSpin {
+    from { transform: translateY(0); }
+    to { transform: translateY(-560px); } /* 7 numbers * 80px height = 560px */
+}
+
+.try-jackpot-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
     border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 0.8rem;
-    color: #333;
-    transform-origin: 100px 100px;
-}
-
-.wheel-number:nth-child(1) { transform: rotate(30deg) translateX(70px); }
-.wheel-number:nth-child(2) { transform: rotate(90deg) translateX(70px); }
-.wheel-number:nth-child(3) { transform: rotate(150deg) translateX(70px); }
-.wheel-number:nth-child(4) { transform: rotate(210deg) translateX(70px); }
-.wheel-number:nth-child(5) { transform: rotate(270deg) translateX(70px); }
-.wheel-number:nth-child(6) { transform: rotate(330deg) translateX(70px); }
-
-/* 룰렛 컨트롤 */
-.roulette-controls {
+    gap: 10px;
     margin-bottom: 20px;
 }
 
-.bet-input, .prediction-input {
-    margin-bottom: 15px;
+.try-jackpot-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
 }
 
-.bet-input label, .prediction-input label {
-    display: block;
-    margin-bottom: 8px;
+.jackpot-winners {
+    border-top: 1px solid #f0f0f0;
+    padding-top: 20px;
+}
+
+.jackpot-winners .history-title {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jackpot-winners .history-title i {
+    color: #ffd700;
+}
+
+.winners-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.winner-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.85rem;
+}
+
+.winner-item:last-child {
+    border-bottom: none;
+}
+
+.winner-item .username {
     font-weight: 600;
     color: #333;
-    font-size: 0.9rem;
 }
 
-.bet-input input, .prediction-input select {
-    width: 100%;
-    padding: 12px 15px;
+.winner-item .amount {
+    font-weight: bold;
+    color: #28a745;
+}
+
+/* 확률 도박기 섹션 */
+.gambling-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    padding: 25px;
+    text-align: center;
+    margin-top: 30px;
+}
+
+.gambling-section .section-title i {
+    color: #6f42c1;
+}
+
+.multiplier-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.multiplier-btn {
+    padding: 10px 15px;
     border: 2px solid #e1e5e9;
-    border-radius: 8px;
+    border-radius: 20px;
+    background: white;
+    color: #666;
     font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
     transition: all 0.3s ease;
 }
 
-.bet-input input:focus, .prediction-input select:focus {
-    outline: none;
-    border-color: #e74c3c;
-    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+.multiplier-btn:hover {
+    border-color: #6f42c1;
+    color: #6f42c1;
 }
 
-.spin-btn {
+.multiplier-btn.active {
+    background: #6f42c1;
+    color: white;
+    border-color: #6f42c1;
+}
+
+.bet-controls {
+    margin-bottom: 20px;
+}
+
+.bet-controls h4 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.bet-amount-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.bet-adjust-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #e1e5e9;
+    background: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.bet-adjust-btn:hover {
+    background: #f0f0f0;
+    border-color: #6f42c1;
+}
+
+.bet-controls small {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.place-bet-btn {
     width: 100%;
     padding: 15px;
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    background: linear-gradient(135deg, #6f42c1 0%, #9a67ea 100%);
     color: white;
     border: none;
     border-radius: 10px;
@@ -716,175 +959,524 @@ body {
     gap: 10px;
 }
 
-.spin-btn:hover:not(:disabled) {
+.place-bet-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+    box-shadow: 0 5px 15px rgba(111, 66, 193, 0.3);
 }
 
-.spin-btn:disabled {
-    background: #bdc3c7;
-    cursor: not-allowed;
-    transform: none;
+/* 오른쪽 컬럼: 실시간 포인트 거래 로그 */
+.right-column {
+    position: sticky;
+    top: 20px;
 }
 
-/* 룰렛 결과 */
-.roulette-result {
+.activity-log-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.activity-log-section .section-title {
+    padding: 20px 25px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #333;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.activity-log-section .section-title i {
+    color: #667eea;
+}
+
+.log-info {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 25px;
+    background: #f8f9fa;
+    font-size: 0.8rem;
+    color: #666;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.activity-feed {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 10px 25px;
+    position: relative;
+}
+
+.activity-feed::before {
+    content: '';
+    position: absolute;
+    left: 45px;
+    top: 20px;
+    bottom: 20px;
+    width: 3px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+}
+
+.activity-item {
+    display: flex;
+    gap: 15px;
+    padding: 15px 0;
+    position: relative;
+}
+
+.activity-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    flex-shrink: 0;
+    z-index: 2;
+    border: 3px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.activity-avatar.earn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.activity-avatar.spend {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+}
+
+.activity-content {
+    flex: 1;
+    padding-top: 5px;
+}
+
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.activity-username {
+    font-weight: 600;
+    color: #333;
+}
+
+.activity-time {
+    font-size: 0.8rem;
+    color: #999;
+}
+
+.activity-message {
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+    margin-bottom: 8px;
+}
+
+.activity-footer {
+    text-align: right;
+}
+
+.activity-amount {
+    font-weight: bold;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    color: white;
+}
+
+.activity-amount.earn {
+    background-color: #28a745;
+}
+
+.activity-amount.spend {
+    background-color: #dc3545;
+}
+
+.empty-activity {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.empty-activity i {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
+}
+
+/* 은행 수익 현황 섹션 */
+.bank-profit-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.bank-profit-section .section-title i {
+    color: #28a745;
+}
+
+.profit-summary {
+    padding: 20px 25px;
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.profit-summary h4 {
+    margin-bottom: 5px;
+    color: #666;
+    font-size: 1rem;
+}
+
+.profit-summary p {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+#bankProfitTable {
+    text-align: left;
+}
+
+#bankProfitTable th, #bankProfitTable td {
+    text-align: left;
+    padding: 15px 25px;
+}
+
+#bankProfitTable td:last-child {
+    text-align: right;
+    font-weight: bold;
+    color: #28a745;
+}
+
+.profit-actions {
+    padding: 15px 25px;
+    text-align: right;
+    background-color: #f8f9fa;
+}
+
+.use-profit-btn {
+    background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.use-profit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 10px rgba(255, 193, 7, 0.3);
+}
+
+.bank-spending-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.bank-spending-section .section-title i {
+    color: #dc3545;
+}
+
+#bankSpendingHistoryTable th, #bankSpendingHistoryTable td {
+    padding: 15px 25px;
+}
+
+#bankSpendingHistoryTable td:nth-child(2) {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    animation: slideInDown 0.3s ease;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #666;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.cancel-btn {
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn:hover {
+    background: #e0e0e0;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+
+@keyframes slideInDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* 대출 시스템 */
+.loan-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.loan-section .section-title {
+    color: #333;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.loan-section .section-title i {
+    color: #667eea;
+}
+
+.loan-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.loan-option-btn {
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    background: white;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+}
+
+.loan-option-btn i {
+    font-size: 1.5rem;
+    color: #667eea;
+    transition: all 0.3s ease;
+}
+
+.loan-option-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+}
+
+.loan-option-btn:hover i {
+    transform: scale(1.1);
+}
+
+.debt-display {
     background: #f8f9fa;
     padding: 20px;
     border-radius: 10px;
     margin-bottom: 20px;
     text-align: center;
-    display: none;
 }
 
-.roulette-result.show {
-    display: block;
-    animation: slideInDown 0.5s ease;
-}
-
-.result-text {
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-}
-
-.result-win {
-    color: #27ae60;
-}
-
-.result-lose {
-    color: #e74c3c;
-}
-
-.result-details {
-    font-size: 0.9rem;
+.debt-display h4 {
+    margin-bottom: 5px;
     color: #666;
-}
-
-/* 룰렛 기록 */
-.roulette-history {
-    border-top: 1px solid #f0f0f0;
-    padding-top: 20px;
-}
-
-.history-title {
     font-size: 1rem;
-    color: #333;
+}
+
+.debt-display p {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #dc3545;
+    margin-bottom: 5px;
+}
+
+.debt-display small {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.loan-form {
+    padding: 20px;
+    border: 2px dashed #e1e5e9;
+    border-radius: 10px;
+}
+
+.loan-form h4 {
     margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    font-size: 1.1rem;
+    color: #333;
 }
 
-.history-title i {
-    color: #e74c3c;
+.loan-status-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
-.history-list {
-    max-height: 200px;
-    overflow-y: auto;
+.loan-status-section .section-title i {
+    color: #ffc107;
 }
 
-.history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
+.table-container {
+    overflow-x: auto;
+}
+
+#loanStatusTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#loanStatusTable th, #loanStatusTable td {
+    padding: 12px 15px;
     border-bottom: 1px solid #f0f0f0;
-    font-size: 0.85rem;
 }
 
-.history-item:last-child {
+#loanStatusTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#loanStatusTable td {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+#loanStatusTable tbody tr:last-child td {
     border-bottom: none;
 }
 
-.history-prediction {
+.repay-btn {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    font-size: 13px;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.history-result {
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
+.repay-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+/* 알림 스타일 */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
     font-weight: bold;
+    z-index: 1000;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    max-width: 300px;
+    word-wrap: break-word;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-.history-result.win {
-    background: #d5f4e6;
-    color: #27ae60;
-}
-
-.history-result.lose {
-    background: #fadbd8;
-    color: #e74c3c;
-}
-
-.history-amount {
-    font-weight: 600;
-}
-
-.history-amount.positive {
-    color: #27ae60;
-}
-
-.history-amount.negative {
-    color: #e74c3c;
-}
-
-/* 애니메이션 */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(1440deg); }
-}
-
-@keyframes slideInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* 반응형 디자인 */
-@media (max-width: 1400px) {
-    .main-content {
-        grid-template-columns: 280px 1fr 320px;
-        gap: 20px;
-    }
-}
+.notification-success { background-color: #28a745; }
+.notification-warning { background-color: #ffc107; color: #333; }
+.notification-error { background-color: #dc3545; }
+.notification-info { background-color: #17a2b8; }
 
 @media (max-width: 1200px) {
     .main-content {
+        grid-template-columns: 250px 1fr;
+        grid-template-areas: 
+            "left center"
+            "right right";
+    }
+    .users-points-column { grid-area: left; }
+    .center-column { grid-area: center; }
+    .right-column { grid-area: right; }
+}
+
+@media (max-width: 992px) {
+    .main-content {
         grid-template-columns: 1fr;
-        gap: 20px;
+        grid-template-areas: 
+            "left"
+            "center"
+            "right";
     }
-    
-    .roulette-column, .right-column {
+    .users-points-column { grid-area: left; }
+    .center-column { grid-area: center; }
+    .right-column { grid-area: right; }
+    .users-points-column, .right-column {
         position: static;
-        order: -1;
     }
-    
-    .roulette-wheel {
-        width: 150px;
-        height: 150px;
-    }
-    
-    .wheel-number {
-        width: 45px;
-        height: 15px;
-        font-size: 0.7rem;
-        transform-origin: 75px 75px;
-    }
-    
-    .wheel-number:nth-child(1) { transform: rotate(30deg) translateX(52px); }
-    .wheel-number:nth-child(2) { transform: rotate(90deg) translateX(52px); }
-    .wheel-number:nth-child(3) { transform: rotate(150deg) translateX(52px); }
-    .wheel-number:nth-child(4) { transform: rotate(210deg) translateX(52px); }
-    .wheel-number:nth-child(5) { transform: rotate(270deg) translateX(52px); }
-    .wheel-number:nth-child(6) { transform: rotate(330deg) translateX(52px); }
 }
 
 @media (max-width: 768px) {
@@ -898,45 +1490,17 @@ body {
         text-align: center;
     }
     
-    .header h1 {
-        font-size: 2rem;
-    }
-    
-    .auth-actions {
-        margin-top: 15px;
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .user-info {
-        align-items: center;
-        text-align: center;
-    }
-    
-    .login-btn, .logout-btn {
-        margin-top: 5px;
+    .header-actions {
+        margin-top: 20px;
     }
     
     .balance-card {
         flex-direction: column;
         text-align: center;
-        gap: 15px;
-    }
-    
-    .balance-amount {
-        font-size: 2.5rem;
-    }
-    
-    .input-tabs {
-        flex-direction: column;
     }
     
     .stats-section {
         grid-template-columns: 1fr;
-    }
-    
-    .filters {
-        flex-wrap: wrap;
     }
     
     .transaction-item {
@@ -946,66 +1510,6 @@ body {
     }
     
     .transaction-amount {
-        margin-left: 0;
         align-self: flex-end;
     }
-    
-    .transaction-actions {
-        margin-left: 0;
-        align-self: flex-end;
-    }
-    
-    .monthly-stats {
-        padding: 15px 20px;
-    }
-    
-    .weekly-chart {
-        padding: 15px 20px;
-    }
-    
-    .achievement-section {
-        padding: 15px 20px;
-    }
-    
-    .goal-section {
-        padding: 15px 20px;
-    }
-}
-
-.hidden {
-    display: none !important;
-}
-
-/* 알림 시스템 */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 15px 20px;
-    border-radius: 8px;
-    color: white;
-    font-weight: bold;
-    z-index: 10000;
-    transform: translateX(100%);
-    transition: transform 0.3s ease;
-    max-width: 300px;
-    word-wrap: break-word;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.notification-success {
-    background-color: #28a745;
-}
-
-.notification-warning {
-    background-color: #ffc107;
-    color: #333;
-}
-
-.notification-error {
-    background-color: #dc3545;
-}
-
-.notification-info {
-    background-color: #17a2b8;
 }

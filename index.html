@@ -38,73 +38,77 @@
         </header>
         
         <div class="main-content">
-            <!-- 맨 왼쪽 컬럼: 룰렛 도박 시스템 -->
-            <div class="roulette-column">
-                <div class="roulette-section">
+            <!-- 맨 왼쪽 컬럼: 모든 사용자 포인트 현황 & 잭팟 시스템 -->
+            <div class="users-points-column">
+                <div class="users-points-section">
                     <h3 class="section-title">
-                        <i class="fas fa-dice"></i> 포인트 룰렛
+                        <i class="fas fa-users"></i> 모든 사용자 포인트
                     </h3>
-                    
-                    <div class="roulette-info">
-                        <div class="weekly-limit">
-                            <span class="limit-text">이번 주 남은 횟수:</span>
-                            <span class="limit-count" id="weeklyLimitCount">3</span>
-                        </div>
-                        <div class="reset-info">
-                            <small>매주 월요일 00:00에 초기화</small>
-                        </div>
+                    <div class="table-container">
+                        <table id="usersPointsTable">
+                            <thead>
+                                <tr>
+                                    <th>사용자</th>
+                                    <th>포인트</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersPointsTableBody">
+                                <!-- 사용자 포인트 목록이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
                     </div>
-                    
-                    <div class="roulette-wheel" id="rouletteWheel">
-                        <div class="wheel-center">
-                            <i class="fas fa-dice"></i>
-                        </div>
-                        <div class="wheel-numbers">
-                            <div class="wheel-number" data-multiplier="2">2배</div>
-                            <div class="wheel-number" data-multiplier="3">3배</div>
-                            <div class="wheel-number" data-multiplier="5">5배</div>
-                            <div class="wheel-number" data-multiplier="7">7배</div>
-                            <div class="wheel-number" data-multiplier="10">10배</div>
-                            <div class="wheel-number" data-multiplier="15">15배</div>
-                        </div>
+                </div>
+                
+                <div class="jackpot-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-trophy"></i> 잭팟 시스템
+                    </h3>
+                    <div class="jackpot-display">
+                        <h4>현재 잭팟</h4>
+                        <p id="jackpotAmount">0P</p>
+                        <small>참가비: 101P (1P는 은행 수익으로)</small>
                     </div>
-                    
-                    <div class="roulette-controls">
-                        <div class="bet-input">
-                            <label for="betAmount">베팅 포인트</label>
-                            <input type="number" id="betAmount" placeholder="베팅할 포인트를 입력하세요" min="1" max="999999">
-                        </div>
-                        
-                        <div class="prediction-input">
-                            <label for="predictedNumber">예측 숫자</label>
-                            <select id="predictedNumber">
-                                <option value="">숫자를 선택하세요</option>
-                                <option value="2">2배 (50% 확률)</option>
-                                <option value="3">3배 (30% 확률)</option>
-                                <option value="5">5배 (15% 확률)</option>
-                                <option value="7">7배 (3% 확률)</option>
-                                <option value="10">10배 (1.5% 확률)</option>
-                                <option value="15">15배 (0.5% 확률)</option>
-                            </select>
-                        </div>
-                        
-                        <button id="spinRouletteBtn" class="spin-btn">
-                            <i class="fas fa-play"></i> 룰렛 돌리기
-                        </button>
+                    <div class="jackpot-scroller-container">
+                        <div class="jackpot-scroller" id="scroller1"></div>
+                        <div class="jackpot-scroller" id="scroller2"></div>
+                        <div class="jackpot-scroller" id="scroller3"></div>
                     </div>
-                    
-                    <div class="roulette-result" id="rouletteResult">
-                        <!-- 룰렛 결과가 여기에 표시됩니다 -->
-                    </div>
-                    
-                    <div class="roulette-history">
+                    <button id="tryJackpotBtn" class="try-jackpot-btn">
+                        <i class="fas fa-dice-d6"></i> 잭팟 도전!
+                    </button>
+                    <div class="jackpot-winners">
                         <h4 class="history-title">
-                            <i class="fas fa-history"></i> 최근 기록
+                            <i class="fas fa-star"></i> 최근 잭팟 당첨자
                         </h4>
-                        <div class="history-list" id="rouletteHistory">
-                            <!-- 룰렛 기록이 여기에 표시됩니다 -->
+                        <div class="winners-list" id="jackpotWinnersList">
+                            <!-- 잭팟 당첨자 목록이 여기에 동적으로 추가됩니다 -->
                         </div>
                     </div>
+                </div>
+
+                <div class="gambling-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-balance-scale"></i> 확률 도박기
+                    </h3>
+                    <div class="multiplier-options">
+                        <button class="multiplier-btn active" data-multiplier="2" data-prob="50">2배 (50%)</button>
+                        <button class="multiplier-btn" data-multiplier="3" data-prob="33">3배 (33%)</button>
+                        <button class="multiplier-btn" data-multiplier="5" data-prob="20">5배 (20%)</button>
+                        <button class="multiplier-btn" data-multiplier="10" data-prob="10">10배 (10%)</button>
+                        <button class="multiplier-btn" data-multiplier="15" data-prob="7">15배 (7%)</button>
+                    </div>
+                    <div class="bet-controls">
+                        <h4>베팅 금액</h4>
+                        <div class="bet-amount-control">
+                            <button id="decreaseBetBtn" class="bet-adjust-btn">-</button>
+                            <span id="betAmountDisplay">100</span>P
+                            <button id="increaseBetBtn" class="bet-adjust-btn">+</button>
+                        </div>
+                        <small>수수료: 베팅 금액 100P당 1P</small>
+                    </div>
+                    <button id="placeBetBtn" class="place-bet-btn">
+                        <i class="fas fa-dice"></i> 베팅하기!
+                    </button>
                 </div>
             </div>
             
@@ -120,6 +124,19 @@
                             <div class="balance-amount" id="currentBalance">0</div>
                             <span class="balance-unit">P</span>
                         </div>
+                    </div>
+                </div>
+
+                <div class="self-study-section">
+                    <h3 class="section-title"><i class="fas fa-book-reader"></i> 야간 자율 학습 포인트</h3>
+                    <div class="day-selector">
+                        <button class="day-btn" data-day="월">월</button>
+                        <button class="day-btn" data-day="화">화</button>
+                        <button class="day-btn" data-day="수">수</button>
+                        <button class="day-btn" data-day="목">목</button>
+                        <button class="day-btn" data-day="금">금</button>
+                        <button class="day-btn" data-day="토">토</button>
+                        <button id="earnSelfStudyBtn" class="earn-study-btn"><i class="fas fa-plus-circle"></i> 적립</button>
                     </div>
                 </div>
                 
@@ -159,6 +176,65 @@
                         <button id="addSpendBtn" class="submit-btn spend-btn">
                             <i class="fas fa-minus"></i> 사용하기
                         </button>
+                    </div>
+                </div>
+
+                <div class="loan-section">
+                    <h3 class="section-title"><i class="fas fa-hand-holding-usd"></i> 포인트 대출 시스템</h3>
+                    <div class="loan-options">
+                        <button class="loan-option-btn" data-loan-type="일반 대출">
+                            <i class="fas fa-user-check"></i> 일반 대출
+                        </button>
+                        <button class="loan-option-btn" data-loan-type="사회적 가치 우대 대출">
+                            <i class="fas fa-hands-helping"></i> 사회적 가치 우대 대출
+                        </button>
+                        <button class="loan-option-btn" data-loan-type="테스트용 대출">
+                            <i class="fas fa-vial"></i> 테스트용 대출
+                        </button>
+                        
+                    </div>
+                    <div class="debt-display">
+                        <h4>총 대출금</h4>
+                        <p id="totalDebtAmount">0P</p>
+                        <small>대출 종류에 따라 이자율이 다르게 적용됩니다.</small>
+                    </div>
+                    <div class="loan-form hidden" id="loanForm">
+                        <h4 id="loanTypeTitle"></h4>
+                        <div class="form-group">
+                            <label for="loanAmount">대출 포인트</label>
+                            <input type="number" id="loanAmount" placeholder="대출할 포인트를 입력하세요" min="1" max="100000">
+                        </div>
+                        <div class="form-group hidden" id="loanReasonGroup">
+                            <label for="loanReason">대출 사유</label>
+                            <input type="text" id="loanReason" placeholder="사회적 가치 활동 계획을 입력하세요" maxlength="100">
+                        </div>
+                        <div class="form-group hidden" id="loanInterestGroup">
+                            <label for="loanInterestAmount">지불할 이자</label>
+                            <input type="number" id="loanInterestAmount" placeholder="지불할 이자 금액을 입력하세요" min="0">
+                        </div>
+                        <button id="requestLoanBtn" class="submit-btn">
+                            <i class="fas fa-hand-holding-usd"></i> 대출 신청
+                        </button>
+                    </div>
+                </div>
+
+                <div class="loan-status-section">
+                    <h3 class="section-title"><i class="fas fa-file-invoice-dollar"></i> 대출 현황</h3>
+                    <div class="table-container">
+                        <table id="loanStatusTable">
+                            <thead>
+                                <tr>
+                                    <th>종류</th>
+                                    <th>대출 원금</th>
+                                    <th>총 상환금</th>
+                                    <th>주간 이자 (다음 적용일)</th>
+                                    <th>상환</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loanStatusBody">
+                                <!-- 대출 내역이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
@@ -219,7 +295,110 @@
                         <p>첫 번째 포인트 거래를 시작해보세요!</p>
                     </div>
                 </div>
+
+                <div class="bank-profit-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-university"></i> 은행 수익 현황
+                    </h3>
+                    <div class="profit-summary">
+                        <h4>총 수익</h4>
+                        <p id="totalBankProfit">0P</p>
+                    </div>
+                    <div class="table-container">
+                        <table id="bankProfitTable">
+                            <thead>
+                                <tr>
+                                    <th>대출 종류</th>
+                                    <th>총 수익</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bankProfitTableBody">
+                                <!-- 수익 내역이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="profit-actions">
+                        <button id="useProfitBtn" class="use-profit-btn"><i class="fas fa-hand-holding-usd"></i> 수익 사용</button>
+                    </div>
+                </div>
+
+                <div class="bank-spending-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-history"></i> 은행 사용 내역
+                    </h3>
+                    <div class="table-container">
+                        <table id="bankSpendingHistoryTable">
+                            <thead>
+                                <tr>
+                                    <th>사용 목적</th>
+                                    <th>사용 금액</th>
+                                    <th>날짜</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bankSpendingHistoryBody">
+                                <!-- 은행 사용 내역이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
+
+    
+    
+    <div id="passwordModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">비밀번호 입력</h3>
+            <p>은행 수익을 사용하려면 비밀번호를 입력하세요.</p>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="passwordInput">비밀번호</label>
+                    <input type="password" id="passwordInput" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="submit-btn">확인</button>
+                    <button type="button" id="closePasswordModalBtn" class="cancel-btn">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="spendProfitModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">수익 사용</h3>
+            <p>사용 목적과 금액을 입력하세요.</p>
+            <form id="spendProfitForm">
+                <div class="form-group">
+                    <label for="spendProfitReason">사용 목적</label>
+                    <input type="text" id="spendProfitReason" required maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="spendProfitAmount">사용 포인트</label>
+                    <input type="number" id="spendProfitAmount" required min="1">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="submit-btn">사용하기</button>
+                    <button type="button" id="closeSpendModalBtn" class="cancel-btn">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="adjustPointsModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">포인트 조정</h3>
+            <p><strong id="adjustUsername"></strong> 님의 포인트를 변경합니다.</p>
+            <form id="adjustPointsForm">
+                <div class="form-group">
+                    <label for="newPointsInput">새 포인트</label>
+                    <input type="number" id="newPointsInput" required min="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="submit-btn">저장</button>
+                    <button type="button" id="closeAdjustModalBtn" class="cancel-btn">취소</button>
+                </div>
+            </form>
         </div>
     </div>
     

@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getDatabase, ref, get, set, push, onValue, off } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { getDatabase, ref, get, set, push, onValue, update, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
 // Firebase 설정
 const firebaseConfig = {
@@ -24,18 +24,18 @@ class PointManager {
         this.currentUser = null;
         this.transactions = [];
         this.currentFilter = 'all';
-        this.onlineUsers = new Set();
-        this.rouletteHistory = [];
-        this.weeklyRouletteCount = 0;
+        this.currentLoanType = null;
+        this.gamblingMultiplier = 2;
+        this.gamblingBetAmount = 100;
+        this.probabilities = { 2: 0.50, 3: 0.33, 5: 0.20, 10: 0.10, 15: 0.07 };
+        this.afterPasswordCallback = null;
+        this.userToAdjust = null;
         this.init();
     }
 
     init() {
-        // DOM이 완전히 로드되었는지 확인
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                this.initializeAfterDOM();
-            });
+            document.addEventListener('DOMContentLoaded', () => this.initializeAfterDOM());
         } else {
             this.initializeAfterDOM();
         }
@@ -44,44 +44,40 @@ class PointManager {
     initializeAfterDOM() {
         this.checkAuthState();
         this.bindEvents();
-        this.loadTransactions();
+        this.displayBankProfit();
+        this.displayBankSpendingHistory();
+        this.displayUsersPoints(); // Display all users points
+        this.displayJackpot();
         this.updateUI();
     }
 
     checkAuthState() {
-        // 사용자 인증 상태 확인
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // 로그인된 상태
                 this.currentUser = user;
                 this.loadUserData();
                 this.showUserActions();
                 this.loadUserTransactions();
-                this.updateOnlineStatus(true); // 로그인 시 온라인 상태 업데이트
+                this.updateOnlineStatus(true);
             } else {
-                // 로그아웃된 상태
                 this.currentUser = null;
                 this.showGuestActions();
                 this.clearUserData();
-                this.updateOnlineStatus(false); // 로그아웃 시 온라인 상태 업데이트
+                this.updateOnlineStatus(false);
             }
         });
     }
 
     async loadUserData() {
         if (!this.currentUser) return;
-        
         try {
             const userRef = ref(database, 'users/' + this.currentUser.uid);
             const userSnapshot = await get(userRef);
-            
             if (userSnapshot.exists()) {
                 const userData = userSnapshot.val();
                 this.updateHeaderUserInfo(userData.username, userData.points || 0);
                 this.updateBalance(userData.points || 0);
-                
-                // 룰렛 관련 데이터 로드
-                this.loadRouletteData();
+                this._calculateAndApplyInterest();
             }
         } catch (error) {
             console.error('사용자 정보 로드 오류:', error);
@@ -90,18 +86,11 @@ class PointManager {
 
     async loadUserTransactions() {
         if (!this.currentUser) return;
-        
         try {
             const transactionsRef = ref(database, 'users/' + this.currentUser.uid + '/transactions');
             onValue(transactionsRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const transactionsData = snapshot.val();
-                    this.transactions = Object.values(transactionsData || {});
-                    this.updateUI();
-                } else {
-                    this.transactions = [];
-                    this.updateUI();
-                }
+                this.transactions = Object.values(snapshot.val() || {});
+                this.updateUI();
             });
         } catch (error) {
             console.error('거래 내역 로드 오류:', error);
@@ -120,7 +109,7 @@ class PointManager {
 
     updateHeaderUserInfo(username, points) {
         document.getElementById('headerUsername').textContent = username || '사용자';
-        document.getElementById('headerUserPoints').textContent = points + 'P';
+        document.getElementById('headerUserPoints').textContent = `${points}P`;
     }
 
     clearUserData() {
@@ -129,37 +118,59 @@ class PointManager {
         this.updateStats(0, 0, 0);
         this.updateTransactionsList();
         this.updateHeaderUserInfo('사용자', 0);
+        document.getElementById('totalDebtAmount').textContent = '0P';
+        document.getElementById('loanStatusBody').innerHTML = '';
     }
 
     bindEvents() {
-        // 로그인 버튼
         document.getElementById('loginBtn').addEventListener('click', () => this.handleLogin());
-
-        // 로그아웃 버튼
         document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
-
-        // 탭 버튼들
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.switchTab(e));
-        });
-
-        // 적립 폼
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', (e) => this.switchTab(e)));
         document.getElementById('addEarnBtn').addEventListener('click', () => this.addTransaction('earn'));
-
-        // 사용 폼
         document.getElementById('addSpendBtn').addEventListener('click', () => this.addTransaction('spend'));
-
-        // 필터 버튼들
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.filterTransactions(e));
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.addEventListener('click', (e) => this.filterTransactions(e)));
+        document.querySelectorAll('.loan-option-btn').forEach(btn => btn.addEventListener('click', (e) => this.openLoanForm(e)));
+        document.getElementById('requestLoanBtn').addEventListener('click', () => this.requestLoan());
+        document.getElementById('loanStatusBody').addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('repay-btn')) {
+                this.handleRepayment(e);
+            }
         });
 
-        // 룰렛 관련 이벤트
-        document.getElementById('spinRouletteBtn').addEventListener('click', () => this.spinRoulette());
+        // Bank Profit Modal Events
+        document.getElementById('useProfitBtn').addEventListener('click', () => {
+            this.afterPasswordCallback = () => document.getElementById('spendProfitModal').classList.remove('hidden');
+            this.openPasswordModal();
+        });
+        document.getElementById('closePasswordModalBtn').addEventListener('click', () => this.closeModals());
+        document.getElementById('closeSpendModalBtn').addEventListener('click', () => this.closeModals());
+        document.getElementById('passwordForm').addEventListener('submit', (e) => this.handlePasswordCheck(e));
+        document.getElementById('spendProfitForm').addEventListener('submit', (e) => this.handleSpendProfit(e));
+        
+        // Jackpot Events
+        document.getElementById('tryJackpotBtn').addEventListener('click', () => this.tryJackpot());
+
+        // Gambling Events
+        document.querySelectorAll('.multiplier-btn').forEach(btn => btn.addEventListener('click', (e) => this.selectMultiplier(e)));
+        document.getElementById('decreaseBetBtn').addEventListener('click', () => this.adjustBet(-100));
+        document.getElementById('increaseBetBtn').addEventListener('click', () => this.adjustBet(100));
+        document.getElementById('placeBetBtn').addEventListener('click', () => this.placeBet());
+
+        // Self-study Events
+        document.querySelectorAll('.day-btn').forEach(btn => btn.addEventListener('click', (e) => e.currentTarget.classList.toggle('active')));
+        document.getElementById('earnSelfStudyBtn').addEventListener('click', () => this.earnSelfStudyPoints());
+
+        // Adjust Points Events
+        document.getElementById('usersPointsTableBody').addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('adjust-btn')) {
+                this.handleAdjustPointsClick(e);
+            }
+        });
+        document.getElementById('adjustPointsForm').addEventListener('submit', (e) => this.saveAdjustedPoints(e));
+        document.getElementById('closeAdjustModalBtn').addEventListener('click', () => this.closeModals());
     }
 
     handleLogin() {
-        // 로그인 페이지로 이동
         window.location.href = 'login.html';
     }
 
@@ -167,12 +178,6 @@ class PointManager {
         try {
             await signOut(auth);
             this.showNotification('로그아웃되었습니다.', 'success');
-            
-            // 로컬 스토리지 정리
-            localStorage.removeItem('currentUser');
-            
-            // 페이지 새로고침 (선택사항)
-            // window.location.reload();
         } catch (error) {
             console.error('로그아웃 오류:', error);
             this.showNotification('로그아웃 중 오류가 발생했습니다.', 'error');
@@ -180,120 +185,619 @@ class PointManager {
     }
 
     switchTab(e) {
-        const targetTab = e.target.dataset.tab;
-        
-        // 모든 탭 버튼 비활성화
+        const targetTab = e.currentTarget.dataset.tab;
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        
-        // 모든 폼 숨기기
         document.querySelectorAll('.input-form').forEach(form => form.classList.add('hidden'));
-        
-        // 선택된 탭 활성화
-        e.target.classList.add('active');
-        
-        // 해당 폼 표시
-        document.getElementById(targetTab + 'Form').classList.remove('hidden');
+        e.currentTarget.classList.add('active');
+        document.getElementById(`${targetTab}Form`).classList.remove('hidden');
     }
 
-
-
-    async addTransaction(type) {
-        if (!this.currentUser) {
-            this.showNotification('로그인이 필요합니다.', 'warning');
-            return;
-        }
-
-        let amount, reason;
-        
-        if (type === 'earn') {
-            amount = parseInt(document.getElementById('earnAmount').value);
-            reason = document.getElementById('earnReason').value;
-            
-            if (!amount || !reason) {
-                this.showNotification('적립 사유와 포인트를 선택해주세요.', 'warning');
-                return;
-            }
-        } else {
-            amount = parseInt(document.getElementById('spendAmount').value);
-            reason = document.getElementById('spendReason').value;
-            
-            if (!amount || !reason) {
-                this.showNotification('사용할 포인트와 사유를 입력해주세요.', 'warning');
-                return;
-            }
-            
-            if (amount > this.getCurrentBalance()) {
-                this.showNotification('보유 포인트가 부족합니다.', 'error');
-                return;
-            }
-        }
+    async _saveTransaction(transaction, loanDetails = null, targetUserId = null, skipActivity = false) {
+        const userId = targetUserId || this.currentUser.uid;
+        if (!userId) return;
 
         try {
-            const transaction = {
-                type: type,
-                amount: amount,
-                reason: reason,
-                timestamp: new Date().toISOString(),
-                date: new Date().toLocaleDateString('ko-KR')
-            };
-
-            // Firebase에 거래 내역 저장
-            const transactionsRef = ref(database, 'users/' + this.currentUser.uid + '/transactions');
+            const transactionsRef = ref(database, `users/${userId}/transactions`);
             const newTransactionRef = push(transactionsRef);
             await set(newTransactionRef, transaction);
 
-            // 전역 활동 로그에 저장
-            const globalActivityRef = ref(database, 'globalActivity');
-            const newActivityRef = push(globalActivityRef);
-            const activityData = {
-                ...transaction,
-                userId: this.currentUser.uid,
-                username: this.currentUser.displayName || '알 수 없음'
-            };
-            await set(newActivityRef, activityData);
+            if (loanDetails) {
+                const loanRef = ref(database, `users/${userId}/loans/${newTransactionRef.key}`);
+                await set(loanRef, loanDetails);
+            }
 
-            // 사용자 포인트 업데이트
-            const userRef = ref(database, 'users/' + this.currentUser.uid);
+            if (!skipActivity) {
+                const globalActivityRef = ref(database, 'globalActivity');
+                const newActivityRef = push(globalActivityRef);
+                const activityData = { ...transaction, userId: userId, username: this.currentUser.displayName || '알 수 없음' };
+                await set(newActivityRef, activityData);
+            }
+
+            const userRef = ref(database, `users/${userId}`);
             const userSnapshot = await get(userRef);
-            
             if (userSnapshot.exists()) {
                 const userData = userSnapshot.val();
                 const currentPoints = userData.points || 0;
-                const newPoints = type === 'earn' ? currentPoints + amount : currentPoints - amount;
+                const newPoints = transaction.type === 'earn' ? currentPoints + transaction.amount : currentPoints - transaction.amount;
+                await set(ref(database, `users/${userId}/points`), newPoints);
                 
-                await set(ref(database, 'users/' + this.currentUser.uid + '/points'), newPoints);
-                
-                // 헤더 포인트 업데이트
-                this.updateHeaderUserInfo(userData.username, newPoints);
+                if (userId === this.currentUser.uid) {
+                    this.updateHeaderUserInfo(userData.username, newPoints);
+                    this.updateBalance(newPoints);
+                }
             }
-
-            // 폼 초기화
-            if (type === 'earn') {
-                document.getElementById('earnReason').selectedIndex = 0;
-                document.getElementById('earnAmount').value = '';
-            } else {
-                document.getElementById('spendAmount').value = '';
-                document.getElementById('spendReason').value = '';
+            if (!skipActivity) {
+                this.showNotification(`${transaction.reason}이(가) 완료되었습니다!`, 'success');
             }
-
-            this.showNotification(`${type === 'earn' ? '적립' : '사용'}이 완료되었습니다!`, 'success');
-            
         } catch (error) {
             console.error('거래 추가 오류:', error);
             this.showNotification('거래 처리 중 오류가 발생했습니다.', 'error');
         }
     }
 
-    filterTransactions(e) {
-        const filter = e.target.dataset.filter;
+    async addTransaction(type) {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+        const amount = parseInt(document.getElementById(`${type}Amount`).value);
+        const reason = document.getElementById(`${type}Reason`).value;
+        if (!amount || !reason) return this.showNotification('사유와 포인트를 올바르게 입력해주세요.', 'warning');
+        if (type === 'spend' && amount > this.getCurrentBalance()) return this.showNotification('보유 포인트가 부족합니다.', 'error');
+        const transaction = { type, amount, reason, timestamp: new Date().toISOString() };
+        await this._saveTransaction(transaction);
+        document.getElementById(`${type}Amount`).value = '';
+        document.getElementById(`${type}Reason`).value = '';
+    }
+
+    openLoanForm(e) {
+        const loanType = e.currentTarget.dataset.loanType;
+        this.currentLoanType = loanType;
+        document.getElementById('loanTypeTitle').textContent = `${loanType} 신청`;
         
-        // 모든 필터 버튼 비활성화
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        const loanReasonGroup = document.getElementById('loanReasonGroup');
+        const loanInterestGroup = document.getElementById('loanInterestGroup');
+
+        loanReasonGroup.classList.add('hidden');
+        loanInterestGroup.classList.add('hidden');
+
+        if (loanType === '사회적 가치 우대 대출') {
+            loanReasonGroup.classList.remove('hidden');
+        } else if (loanType === '테스트용 대출') {
+            loanInterestGroup.classList.remove('hidden');
+        }
+
+        document.getElementById('loanForm').classList.remove('hidden');
+    }
+
+    async requestLoan() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+        const amount = parseInt(document.getElementById('loanAmount').value);
+        if (!amount || amount < 100) return this.showNotification('대출은 100포인트 이상부터 가능합니다.', 'warning');
+
+        let reason = this.currentLoanType;
+        let loanDetails = null;
+
+        if (this.currentLoanType === '일반 대출') {
+            loanDetails = { type: '일반 대출', interestRate: 0.05, principal: amount, amountDue: amount, startDate: new Date().toISOString(), lastInterestAppliedDate: new Date().toISOString(), status: 'active' };
+        } else if (this.currentLoanType === '사회적 가치 우대 대출') {
+            const loanReasonText = document.getElementById('loanReason').value;
+            if (!loanReasonText) return this.showNotification('대출 사유를 입력해주세요.', 'warning');
+            reason = `${this.currentLoanType}: ${loanReasonText}`;
+            loanDetails = { type: '사회적 가치 우대 대출', interestRate: 0.02, principal: amount, amountDue: amount, reason: loanReasonText, startDate: new Date().toISOString(), lastInterestAppliedDate: new Date().toISOString(), status: 'active' };
+        }
+
+        const transaction = { type: 'earn', amount, reason, timestamp: new Date().toISOString() };
+        await this._saveTransaction(transaction, loanDetails);
+
+        document.getElementById('loanForm').classList.add('hidden');
+        document.getElementById('loanAmount').value = '';
+        document.getElementById('loanReason').value = '';
+        document.getElementById('loanInterestAmount').value = '';
+        this.currentLoanType = null;
+        this._calculateAndApplyInterest();
+    }
+
+    async handleRepayment(e) {
+        const loanId = e.target.dataset.loanId;
+        const amountDue = parseInt(e.target.dataset.amountDue);
+        if (!loanId || !amountDue) return;
+
+        if (this.getCurrentBalance() < amountDue) {
+            return this.showNotification('포인트가 부족하여 상환할 수 없습니다.', 'error');
+        }
+
+        const loanRef = ref(database, `users/${this.currentUser.uid}/loans/${loanId}`);
+        const loanSnapshot = await get(loanRef);
+        if (!loanSnapshot.exists()) return this.showNotification('대출 정보를 찾을 수 없습니다.', 'error');
         
-        // 선택된 필터 활성화
+        const loan = loanSnapshot.val();
+        const profit = amountDue - loan.principal;
+
+        const transaction = { type: 'spend', amount: amountDue, reason: `${loan.type} 상환`, timestamp: new Date().toISOString() };
+        await this._saveTransaction(transaction);
+
+        await update(loanRef, { status: 'paid', amountDue: amountDue });
+
+        if (profit > 0) {
+            const profitRef = ref(database, 'globalStats/bankProfit');
+            const updates = {};
+            updates[`total`] = increment(profit);
+            updates[`byType/${loan.type}`] = increment(profit);
+            await update(profitRef, updates);
+        }
+
+        this.showNotification('대출 상환이 완료되었습니다.', 'success');
+        this._calculateAndApplyInterest();
+    }
+
+    displayBankProfit() {
+        const profitRef = ref(database, 'globalStats/bankProfit');
+        onValue(profitRef, (snapshot) => {
+            const data = snapshot.val() || { total: 0, byType: {} };
+            document.getElementById('totalBankProfit').textContent = `${data.total || 0}P`;
+            
+            const tableBody = document.getElementById('bankProfitTableBody');
+            tableBody.innerHTML = '';
+            
+            if (data.byType && Object.keys(data.byType).length > 0) {
+                for (const loanType in data.byType) {
+                    const row = `
+                        <tr>
+                            <td>${loanType}</td>
+                            <td>+${data.byType[loanType]}P</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                }
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="2">아직 수익이 없습니다.</td></tr>';
+            }
+        });
+    }
+
+    displayBankSpendingHistory() {
+        const spendingRef = ref(database, 'globalStats/bankSpendingHistory');
+        onValue(spendingRef, (snapshot) => {
+            const history = snapshot.val() || {};
+            const tableBody = document.getElementById('bankSpendingHistoryBody');
+            tableBody.innerHTML = '';
+            const sortedHistory = Object.values(history).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (sortedHistory.length > 0) {
+                sortedHistory.forEach(record => {
+                    const row = `
+                        <tr>
+                            <td>${record.reason}</td>
+                            <td>-${record.amount}P</td>
+                            <td>${new Date(record.timestamp).toLocaleDateString('ko-KR')}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">사용 내역이 없습니다.</td></tr>';
+            }
+        });
+    }
+
+    openPasswordModal() {
+        document.getElementById('passwordModal').classList.remove('hidden');
+    }
+
+    closeModals() {
+        document.getElementById('passwordModal').classList.add('hidden');
+        document.getElementById('spendProfitModal').classList.add('hidden');
+        document.getElementById('adjustPointsModal').classList.add('hidden');
+    }
+
+    handlePasswordCheck(e) {
+        e.preventDefault();
+        const password = document.getElementById('passwordInput').value;
+        if (password === 'cjw03688055') {
+            this.closeModals();
+            if (typeof this.afterPasswordCallback === 'function') {
+                this.afterPasswordCallback();
+                this.afterPasswordCallback = null; // Reset callback after use
+            }
+        } else {
+            this.showNotification('비밀번호가 올바르지 않습니다.', 'error');
+        }
+        document.getElementById('passwordInput').value = '';
+    }
+
+    async handleSpendProfit(e) {
+        e.preventDefault();
+        const reason = document.getElementById('spendProfitReason').value;
+        const amount = parseInt(document.getElementById('spendProfitAmount').value);
+
+        if (!reason || !amount || amount <= 0) {
+            return this.showNotification('사용 목적과 금액을 올바르게 입력하세요.', 'warning');
+        }
+
+        const profitRef = ref(database, 'globalStats/bankProfit/total');
+        const snapshot = await get(profitRef);
+        const totalProfit = snapshot.val() || 0;
+
+        if (amount > totalProfit) {
+            return this.showNotification('사용할 수 있는 수익이 부족합니다.', 'error');
+        }
+
+        const spendingRecord = {
+            reason,
+            amount,
+            timestamp: new Date().toISOString()
+        };
+
+        const newSpendingRef = push(ref(database, 'globalStats/bankSpendingHistory'));
+        await set(newSpendingRef, spendingRecord);
+
+        await update(ref(database, 'globalStats/bankProfit'), { total: increment(-amount) });
+
+        this.showNotification('수익 사용이 완료되었습니다.', 'success');
+        this.closeModals();
+        document.getElementById('spendProfitReason').value = '';
+        document.getElementById('spendProfitAmount').value = '';
+    }
+
+    displayUsersPoints() {
+        const usersRef = ref(database, 'users');
+        onValue(usersRef, (snapshot) => {
+            const usersData = snapshot.val() || {};
+            const tableBody = document.getElementById('usersPointsTableBody');
+            const tableHead = document.querySelector('#usersPointsTable thead tr');
+            tableBody.innerHTML = '';
+            tableHead.innerHTML = '<th>사용자</th><th>포인트</th><th>수정</th>';
+
+            const sortedUsers = Object.keys(usersData).map(uid => ({
+                uid,
+                ...usersData[uid]
+            })).sort((a, b) => (b.points || 0) - (a.points || 0));
+
+            if (sortedUsers.length > 0) {
+                sortedUsers.forEach(user => {
+                    const row = `
+                        <tr>
+                            <td>${user.username || '알 수 없음'}</td>
+                            <td>${user.points || 0}P</td>
+                            <td>
+                                <button class="adjust-btn" data-uid="${user.uid}" data-username="${user.username}" data-points="${user.points || 0}">수정</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">사용자가 없습니다.</td></tr>';
+            }
+        });
+    }
+
+    handleAdjustPointsClick(e) {
+        const target = e.target;
+        this.userToAdjust = {
+            uid: target.dataset.uid,
+            username: target.dataset.username,
+            points: parseInt(target.dataset.points)
+        };
+        this.afterPasswordCallback = () => this.openAdjustPointsModal();
+        this.openPasswordModal();
+    }
+
+    openAdjustPointsModal() {
+        if (!this.userToAdjust) return;
+        document.getElementById('adjustUsername').textContent = this.userToAdjust.username;
+        document.getElementById('newPointsInput').value = this.userToAdjust.points;
+        document.getElementById('adjustPointsModal').classList.remove('hidden');
+    }
+
+    async saveAdjustedPoints(e) {
+        e.preventDefault();
+        if (!this.userToAdjust) return;
+
+        const newPoints = parseInt(document.getElementById('newPointsInput').value);
+        if (isNaN(newPoints) || newPoints < 0) {
+            return this.showNotification('유효한 포인트를 입력하세요.', 'warning');
+        }
+
+        const oldPoints = this.userToAdjust.points;
+        const difference = newPoints - oldPoints;
+
+        if (difference === 0) {
+            return this.closeModals();
+        }
+
+        const transactionType = difference > 0 ? 'earn' : 'spend';
+        const transactionAmount = Math.abs(difference);
+        const reason = `관리자 조정 (${this.currentUser.displayName})`;
+
+        const transaction = { type: transactionType, amount: transactionAmount, reason, timestamp: new Date().toISOString() };
+        
+        // Use a special parameter to save transaction for another user
+        await this._saveTransaction(transaction, null, this.userToAdjust.uid, true);
+
+        // Directly set the points for the user
+        const userPointsRef = ref(database, `users/${this.userToAdjust.uid}/points`);
+        await set(userPointsRef, newPoints);
+
+        this.showNotification(`${this.userToAdjust.username}님의 포인트를 ${newPoints}P로 변경했습니다.`, 'success');
+        this.closeModals();
+        this.userToAdjust = null;
+    }
+
+    displayJackpot() {
+        const jackpotRef = ref(database, 'globalStats/jackpot');
+        onValue(jackpotRef, (snapshot) => {
+            const data = snapshot.val() || { amount: 1000, winners: {} };
+            document.getElementById('jackpotAmount').textContent = `${data.amount || 1000}P`;
+            
+            const winnersList = document.getElementById('jackpotWinnersList');
+            winnersList.innerHTML = '';
+            if (data.winners) {
+                const sortedWinners = Object.values(data.winners).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                sortedWinners.forEach(winner => {
+                    const winnerItem = `
+                        <div class="winner-item">
+                            <span class="username">${winner.username}</span>
+                            <span class="amount">+${winner.amount}P</span>
+                        </div>
+                    `;
+                    winnersList.innerHTML += winnerItem;
+                });
+            }
+        });
+    }
+
+    async tryJackpot() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+        
+        const tryBtn = document.getElementById('tryJackpotBtn');
+        if (tryBtn.disabled) return;
+
+        const cost = 101;
+        const userPoints = this.getCurrentBalance();
+
+        if (userPoints < cost) {
+            return this.showNotification(`잭팟에 도전하려면 ${cost}P가 필요합니다.`, 'error');
+        }
+
+        try {
+            tryBtn.disabled = true;
+            tryBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 행운을 비는 중...';
+
+            // 1. Deduct points and update jackpot pool
+            const transaction = { type: 'spend', amount: cost, reason: '잭팟 도전', timestamp: new Date().toISOString() };
+            await this._saveTransaction(transaction);
+
+            const bankProfitRef = ref(database, 'globalStats/bankProfit');
+            await update(bankProfitRef, { total: increment(1), 'byType/잭팟': increment(1) });
+
+            await update(ref(database, 'globalStats/jackpot'), { amount: increment(100) });
+
+            // 2. Run animation
+            const result = await this.runJackpotAnimation();
+
+            // 3. Check for win
+            const isWinner = result.length === 3 && result[0] === result[1] && result[1] === result[2];
+
+            if (isWinner) {
+                const jackpotSnapshot = await get(ref(database, 'globalStats/jackpot/amount'));
+                const jackpotAmount = jackpotSnapshot.val();
+
+                const winTransaction = { type: 'earn', amount: jackpotAmount, reason: '잭팟 당첨!', timestamp: new Date().toISOString() };
+                await this._saveTransaction(winTransaction);
+
+                const winnerInfo = {
+                    username: this.currentUser.displayName || '알 수 없음',
+                    amount: jackpotAmount,
+                    timestamp: new Date().toISOString()
+                };
+                const newWinnerRef = push(ref(database, 'globalStats/jackpot/winners'));
+                await set(newWinnerRef, winnerInfo);
+
+                await set(ref(database, 'globalStats/jackpot/amount'), 1000); // Reset jackpot
+
+                this.showNotification(`축하합니다! ${jackpotAmount}P 잭팟에 당첨되셨습니다!`, 'success');
+            } else {
+                this.showNotification('아쉽지만 다음 기회에!', 'info');
+            }
+
+            tryBtn.disabled = false;
+            tryBtn.innerHTML = '<i class="fas fa-dice-d6"></i> 잭팟 도전!';
+
+        } catch (error) {
+            console.error("Jackpot error:", error);
+            this.showNotification('잭팟 진행 중 오류가 발생했습니다.', 'error');
+            tryBtn.disabled = false;
+            tryBtn.innerHTML = '<i class="fas fa-dice-d6"></i> 잭팟 도전!';
+        }
+    }
+
+    runJackpotAnimation() {
+        return new Promise(resolve => {
+            const scrollers = [document.getElementById('scroller1'), document.getElementById('scroller2'), document.getElementById('scroller3')];
+            const numbers = [1, 2, 3];
+            let finalResult = [];
+
+            scrollers.forEach((scroller, i) => {
+                scroller.innerHTML = ''; // Clear previous numbers
+                const numberList = document.createElement('ul');
+                numberList.className = 'number-list';
+                for (let j = 0; j < 10; j++) { // Add numbers for spinning effect
+                    const item = document.createElement('li');
+                    item.textContent = numbers[Math.floor(Math.random() * numbers.length)];
+                    item.style.height = '80px';
+                    item.style.lineHeight = '80px';
+                    item.style.fontSize = '40px';
+                    numberList.appendChild(item);
+                }
+                scroller.appendChild(numberList);
+                scroller.classList.add('spinning');
+            });
+
+            setTimeout(() => {
+                scrollers.forEach((scroller, i) => {
+                    scroller.classList.remove('spinning');
+                    const resultNum = Math.floor(Math.random() * 3) + 1;
+                    finalResult.push(resultNum);
+                    scroller.innerHTML = `<div style="font-size: 40px; line-height: 80px;">${resultNum}</div>`;
+                });
+                resolve(finalResult);
+            }, 2000 + Math.random() * 1000); // Spin for 2-3 seconds
+        });
+    }
+
+    selectMultiplier(e) {
+        this.gamblingMultiplier = parseInt(e.target.dataset.multiplier);
+        document.querySelectorAll('.multiplier-btn').forEach(btn => btn.classList.remove('active'));
         e.target.classList.add('active');
-        
-        this.currentFilter = filter;
+    }
+
+    adjustBet(amount) {
+        this.gamblingBetAmount += amount;
+        if (this.gamblingBetAmount < 100) {
+            this.gamblingBetAmount = 100;
+        }
+        document.getElementById('betAmountDisplay').textContent = this.gamblingBetAmount;
+    }
+
+    async placeBet() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+
+        const betAmount = this.gamblingBetAmount;
+        const fee = Math.floor(betAmount / 100);
+        const totalCost = betAmount + fee;
+
+        if (this.getCurrentBalance() < totalCost) {
+            return this.showNotification('포인트가 부족합니다.', 'error');
+        }
+
+        const placeBetBtn = document.getElementById('placeBetBtn');
+        placeBetBtn.disabled = true;
+        placeBetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 베팅 중...';
+
+        try {
+            // 1. Deduct points
+            const transaction = { type: 'spend', amount: totalCost, reason: `확률 도박 (${this.gamblingMultiplier}배)` };
+            await this._saveTransaction(transaction);
+
+            // 2. Add fee to bank profit
+            const bankProfitRef = ref(database, 'globalStats/bankProfit');
+            await update(bankProfitRef, { total: increment(fee), 'byType/확률도박': increment(fee) });
+
+            // 3. Roll the dice
+            const probability = this.probabilities[this.gamblingMultiplier];
+            const isWinner = Math.random() < probability;
+
+            if (isWinner) {
+                const winnings = betAmount * this.gamblingMultiplier;
+                const winTransaction = { type: 'earn', amount: winnings, reason: `확률 도박 (${this.gamblingMultiplier}배) 성공!` };
+                await this._saveTransaction(winTransaction);
+                this.showNotification(`축하합니다! ${winnings}P 획득!`, 'success');
+            } else {
+                this.showNotification('아쉽지만, 베팅에 실패했습니다.', 'info');
+            }
+        } catch (error) {
+            console.error("Gambling error:", error);
+            this.showNotification('베팅 중 오류가 발생했습니다.', 'error');
+        }
+
+        placeBetBtn.disabled = false;
+        placeBetBtn.innerHTML = '<i class="fas fa-dice"></i> 베팅하기!';
+    }
+
+    async earnSelfStudyPoints() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+
+        const selectedDays = document.querySelectorAll('.day-btn.active');
+        if (selectedDays.length === 0) {
+            return this.showNotification('적립할 요일을 선택해주세요.', 'warning');
+        }
+
+        const pointsToEarn = selectedDays.length * 100;
+        const reason = `야간 자율 학습 (${Array.from(selectedDays).map(btn => btn.dataset.day).join(', ')})`;
+
+        const transaction = { type: 'earn', amount: pointsToEarn, reason };
+        await this._saveTransaction(transaction);
+
+        selectedDays.forEach(btn => btn.classList.remove('active'));
+    }
+
+    _getWeeksBetween(startDate, endDate) {
+        const msInWeek = 7 * 24 * 60 * 60 * 1000;
+        return Math.floor((new Date(endDate) - new Date(startDate)) / msInWeek);
+    }
+
+    async _calculateAndApplyInterest() {
+        if (!this.currentUser) return;
+        const loansRef = ref(database, `users/${this.currentUser.uid}/loans`);
+        const loansSnapshot = await get(loansRef);
+        if (!loansSnapshot.exists()) {
+            document.getElementById('totalDebtAmount').textContent = '0P';
+            this._renderLoanTable({});
+            return;
+        }
+        const loans = loansSnapshot.val();
+        let totalDebt = 0;
+        const today = new Date();
+        for (const loanId in loans) {
+            const loan = loans[loanId];
+            if (loan.status === 'active' && loan.interestRate > 0) {
+                const weeksPassed = this._getWeeksBetween(loan.lastInterestAppliedDate, today);
+                if (weeksPassed > 0) {
+                    loan.amountDue = Math.floor(loan.amountDue * Math.pow(1 + loan.interestRate, weeksPassed));
+                    loan.lastInterestAppliedDate = today.toISOString();
+                    const loanToUpdateRef = ref(database, `users/${this.currentUser.uid}/loans/${loanId}`);
+                    await set(loanToUpdateRef, loan);
+                }
+            }
+            if (loan.status === 'active') {
+                totalDebt += loan.amountDue;
+            }
+        }
+        document.getElementById('totalDebtAmount').textContent = `${totalDebt}P`;
+        this._renderLoanTable(loans);
+    }
+
+    _renderLoanTable(loans) {
+        const loanStatusBody = document.getElementById('loanStatusBody');
+        loanStatusBody.innerHTML = '';
+        let hasActiveLoans = false;
+        for (const loanId in loans) {
+            const loan = loans[loanId];
+            if (loan.status === 'active') {
+                hasActiveLoans = true;
+                let interestHtml = '-';
+                if (loan.type === '테스트용 대출') {
+                    interestHtml = `+${loan.interest}P (일시불)`;
+                } else if (loan.interestRate > 0) {
+                    const weeklyInterest = Math.floor(loan.amountDue * loan.interestRate);
+                    const lastDate = new Date(loan.lastInterestAppliedDate);
+                    lastDate.setDate(lastDate.getDate() + 7);
+                    const nextInterestDateStr = lastDate.toISOString().split('T')[0];
+                    interestHtml = `+${weeklyInterest}P (${nextInterestDateStr})`;
+                }
+
+                const row = `
+                    <tr>
+                        <td>${loan.type}</td>
+                        <td>${loan.principal}P</td>
+                        <td>${loan.amountDue}P</td>
+                        <td>${interestHtml}</td>
+                        <td>
+                            <button class="repay-btn" data-loan-id="${loanId}" data-amount-due="${loan.amountDue}">전액 상환</button>
+                        </td>
+                    </tr>
+                `;
+                loanStatusBody.innerHTML += row;
+            }
+        }
+        if (!hasActiveLoans) {
+            loanStatusBody.innerHTML = '<tr><td colspan="5">활성화된 대출이 없습니다.</td></tr>';
+        }
+    }
+
+    filterTransactions(e) {
+        this.currentFilter = e.currentTarget.dataset.filter;
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        e.currentTarget.classList.add('active');
         this.updateTransactionsList();
     }
 
@@ -314,36 +818,17 @@ class PointManager {
     updateTransactionsList() {
         const transactionsList = document.getElementById('transactionsList');
         const emptyState = document.getElementById('emptyState');
-        
-        // 필터링된 거래 내역
-        let filteredTransactions = this.transactions;
-        
-        if (this.currentFilter === 'earn') {
-            filteredTransactions = this.transactions.filter(t => t.type === 'earn');
-        } else if (this.currentFilter === 'spend') {
-            filteredTransactions = this.transactions.filter(t => t.type === 'spend');
-        }
-
-        if (filteredTransactions.length === 0) {
+        const filtered = this.transactions.filter(t => this.currentFilter === 'all' || t.type === this.currentFilter);
+        if (filtered.length === 0) {
             transactionsList.innerHTML = '';
             emptyState.style.display = 'block';
-            return;
+        } else {
+            emptyState.style.display = 'none';
+            transactionsList.innerHTML = filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map(t => this.createTransactionHTML(t)).join('');
         }
-
-        emptyState.style.display = 'none';
-
-        // 통계 계산
         const totalEarned = this.transactions.filter(t => t.type === 'earn').reduce((sum, t) => sum + t.amount, 0);
         const totalSpent = this.transactions.filter(t => t.type === 'spend').reduce((sum, t) => sum + t.amount, 0);
-        const transactionCount = this.transactions.length;
-
-        this.updateStats(totalEarned, totalSpent, transactionCount);
-
-        // 거래 내역 렌더링
-        transactionsList.innerHTML = filteredTransactions
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-            .map(transaction => this.createTransactionHTML(transaction))
-            .join('');
+        this.updateStats(totalEarned, totalSpent, this.transactions.length);
     }
 
     createTransactionHTML(transaction) {
@@ -351,15 +836,12 @@ class PointManager {
         const icon = isEarn ? 'fa-plus-circle' : 'fa-minus-circle';
         const colorClass = isEarn ? 'earn' : 'spend';
         const sign = isEarn ? '+' : '-';
-        
         return `
             <div class="transaction-item ${colorClass}">
-                <div class="transaction-icon">
-                    <i class="fas ${icon}"></i>
-                </div>
+                <div class="transaction-icon"><i class="fas ${icon}"></i></div>
                 <div class="transaction-details">
                     <div class="transaction-reason">${transaction.reason}</div>
-                    <div class="transaction-date">${transaction.date}</div>
+                    <div class="transaction-date">${new Date(transaction.timestamp).toLocaleDateString('ko-KR')}</div>
                 </div>
                 <div class="transaction-amount">
                     <span class="amount-sign">${sign}</span>
@@ -370,556 +852,135 @@ class PointManager {
         `;
     }
 
-    loadTransactions() {
-        // 로컬 스토리지에서 거래 내역 로드 (기존 코드 유지)
-        const savedTransactions = localStorage.getItem('transactions');
-        if (savedTransactions) {
-            this.transactions = JSON.parse(savedTransactions);
-        }
-    }
-
     updateUI() {
         this.updateTransactionsList();
         this.updateActivityLog();
-        
-        // 초기 상태에서 empty state 표시
-        if (this.transactions.length === 0) {
-            document.getElementById('emptyState').style.display = 'block';
-        }
     }
 
     showNotification(message, type = 'info') {
-        // 알림 시스템
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
-
         document.body.appendChild(notification);
-
-        // 애니메이션
-        setTimeout(() => {
-            notification.style.transform = 'translateX(0)';
-        }, 100);
-
-        // 자동 제거
+        setTimeout(() => notification.style.transform = 'translateX(0)', 100);
         setTimeout(() => {
             notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 300);
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
 
-    // 활동 로그 업데이트
     updateActivityLog() {
         this.loadGlobalActivityLog();
         this.updateOnlineUsers();
         this.updateLastUpdate();
     }
 
-    // 전역 활동 로그 로드
     loadGlobalActivityLog() {
         try {
             const globalActivityRef = ref(database, 'globalActivity');
             onValue(globalActivityRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const activities = snapshot.val();
-                    const activityArray = Object.values(activities || {});
-                    this.renderActivityLog(activityArray);
-                } else {
-                    this.renderActivityLog([]);
-                }
+                const activities = snapshot.val() || {};
+                this.renderActivityLog(Object.values(activities));
             });
         } catch (error) {
             console.error('전역 활동 로그 로드 오류:', error);
         }
     }
 
-    // 활동 로그 렌더링
     renderActivityLog(activities) {
         const activityFeed = document.getElementById('activityFeed');
         const emptyActivity = document.getElementById('emptyActivity');
-        
         if (activities.length === 0) {
             activityFeed.innerHTML = '';
             emptyActivity.style.display = 'block';
             return;
         }
-        
         emptyActivity.style.display = 'none';
-        
-        // 최신 순으로 정렬하고 최대 50개만 표시
-        const sortedActivities = activities
-            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-            .slice(0, 50);
-        
-        activityFeed.innerHTML = sortedActivities.map(activity => 
-            this.createActivityHTML(activity)
-        ).join('');
-        
-        // 자동 스크롤을 맨 아래로
+        const sortedActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
+        activityFeed.innerHTML = sortedActivities.map(activity => this.createActivityHTML(activity)).join('');
         activityFeed.scrollTop = activityFeed.scrollHeight;
     }
 
-    // 활동 HTML 생성
     createActivityHTML(activity) {
         const isEarn = activity.type === 'earn';
+        const icon = isEarn ? 'fa-plus' : 'fa-minus';
         const avatarClass = isEarn ? 'earn' : 'spend';
-        const typeClass = isEarn ? 'earn' : 'spend';
-        const amountClass = isEarn ? 'earn' : 'spend';
-        const typeText = isEarn ? '적립' : '사용';
-        const sign = isEarn ? '+' : '-';
-        
-        // 사용자 이름의 첫 글자로 아바타 생성
-        const avatarText = activity.username ? activity.username.charAt(0).toUpperCase() : '?';
-        
-        // 시간 포맷팅
         const timeAgo = this.getTimeAgo(activity.timestamp);
-        
+
         return `
             <div class="activity-item">
                 <div class="activity-avatar ${avatarClass}">
-                    ${avatarText}
+                    <i class="fas ${icon}"></i>
                 </div>
                 <div class="activity-content">
                     <div class="activity-header">
                         <span class="activity-username">${activity.username || '알 수 없음'}</span>
-                        <span class="activity-type ${typeClass}">${typeText}</span>
                         <span class="activity-time">${timeAgo}</span>
                     </div>
                     <div class="activity-message">
                         ${activity.reason}
-                        <span class="activity-amount ${amountClass}">${sign}${activity.amount}P</span>
+                    </div>
+                    <div class="activity-footer">
+                        <span class="activity-amount ${avatarClass}">${isEarn ? '+' : '-'}${activity.amount}P</span>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    // 시간 전 표시
     getTimeAgo(timestamp) {
         const now = new Date();
         const activityTime = new Date(timestamp);
         const diffInSeconds = Math.floor((now - activityTime) / 1000);
-        
         if (diffInSeconds < 60) return '방금 전';
         if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
         if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
-        if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}일 전`;
-        
-        return activityTime.toLocaleDateString('ko-KR');
+        return `${Math.floor(diffInSeconds / 86400)}일 전`;
     }
 
-    // 온라인 사용자 수 업데이트
     updateOnlineUsers() {
         try {
             const onlineUsersRef = ref(database, 'onlineUsers');
             onValue(onlineUsersRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const onlineUsers = snapshot.val();
-                    const count = Object.keys(onlineUsers || {}).length;
-                    document.getElementById('onlineUsers').textContent = `온라인: ${count}명`;
-                } else {
-                    document.getElementById('onlineUsers').textContent = '온라인: 0명';
-                }
+                const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                document.getElementById('onlineUsers').textContent = `온라인: ${count}명`;
             });
         } catch (error) {
             console.error('온라인 사용자 수 업데이트 오류:', error);
         }
     }
 
-    // 마지막 업데이트 시간 업데이트
     updateLastUpdate() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('ko-KR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        const timeString = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
         document.getElementById('lastUpdate').textContent = `마지막 업데이트: ${timeString}`;
-        
-        // 1분마다 업데이트
         setTimeout(() => this.updateLastUpdate(), 60000);
     }
 
-    // 거래 추가 시 전역 활동 로그에도 저장
-    async addTransaction(type) {
-        if (!this.currentUser) {
-            this.showNotification('로그인이 필요합니다.', 'warning');
-            return;
-        }
-
-        let amount, reason;
-        
-        if (type === 'earn') {
-            amount = parseInt(document.getElementById('earnAmount').value);
-            reason = document.getElementById('earnReason').value;
-            
-            if (!amount || !reason) {
-                this.showNotification('적립 사유와 포인트를 선택해주세요.', 'warning');
-                return;
-            }
-        } else {
-            amount = parseInt(document.getElementById('spendAmount').value);
-            reason = document.getElementById('spendReason').value;
-            
-            if (!amount || !reason) {
-                this.showNotification('사용할 포인트와 사유를 입력해주세요.', 'warning');
-                return;
-            }
-            
-            if (amount > this.getCurrentBalance()) {
-                this.showNotification('보유 포인트가 부족합니다.', 'error');
-                return;
-            }
-        }
-
-        try {
-            const transaction = {
-                type: type,
-                amount: amount,
-                reason: reason,
-                timestamp: new Date().toISOString(),
-                date: new Date().toLocaleDateString('ko-KR')
-            };
-
-            // Firebase에 거래 내역 저장
-            const transactionsRef = ref(database, 'users/' + this.currentUser.uid + '/transactions');
-            const newTransactionRef = push(transactionsRef);
-            await set(newTransactionRef, transaction);
-
-            // 전역 활동 로그에 저장
-            const globalActivityRef = ref(database, 'globalActivity');
-            const newActivityRef = push(globalActivityRef);
-            const activityData = {
-                ...transaction,
-                userId: this.currentUser.uid,
-                username: this.currentUser.displayName || '알 수 없음'
-            };
-            await set(newActivityRef, activityData);
-
-            // 사용자 포인트 업데이트
-            const userRef = ref(database, 'users/' + this.currentUser.uid);
-            const userSnapshot = await get(userRef);
-            
-            if (userSnapshot.exists()) {
-                const userData = userSnapshot.val();
-                const currentPoints = userData.points || 0;
-                const newPoints = type === 'earn' ? currentPoints + amount : currentPoints - amount;
-                
-                await set(ref(database, 'users/' + this.currentUser.uid + '/points'), newPoints);
-                
-                // 헤더 포인트 업데이트
-                this.updateHeaderUserInfo(userData.username, newPoints);
-            }
-
-            // 폼 초기화
-            if (type === 'earn') {
-                document.getElementById('earnReason').selectedIndex = 0;
-                document.getElementById('earnAmount').value = '';
-            } else {
-                document.getElementById('spendAmount').value = '';
-                document.getElementById('spendReason').value = '';
-            }
-
-            this.showNotification(`${type === 'earn' ? '적립' : '사용'}이 완료되었습니다!`, 'success');
-            
-        } catch (error) {
-            console.error('거래 추가 오류:', error);
-            this.showNotification('거래 처리 중 오류가 발생했습니다.', 'error');
-        }
-    }
-
-    // 사용자 로그인 시 온라인 상태 추가
     async updateOnlineStatus(isOnline) {
         if (!this.currentUser) return;
-        
         try {
-            const onlineUsersRef = ref(database, 'onlineUsers/' + this.currentUser.uid);
+            const onlineUserRef = ref(database, `onlineUsers/${this.currentUser.uid}`);
             if (isOnline) {
-                await set(onlineUsersRef, {
-                    username: this.currentUser.displayName || '알 수 없음',
-                    lastSeen: new Date().toISOString()
-                });
+                await set(onlineUserRef, { username: this.currentUser.displayName || '알 수 없음', lastSeen: serverTimestamp() });
             } else {
-                await set(onlineUsersRef, null);
+                await set(onlineUserRef, null);
             }
         } catch (error) {
             console.error('온라인 상태 업데이트 오류:', error);
         }
-    }
-
-    // 룰렛 데이터 로드
-    async loadRouletteData() {
-        try {
-            const rouletteRef = ref(database, 'users/' + this.currentUser.uid + '/roulette');
-            const rouletteSnapshot = await get(rouletteRef);
-            
-            if (rouletteSnapshot.exists()) {
-                const rouletteData = rouletteSnapshot.val();
-                this.rouletteHistory = rouletteData.history || [];
-                this.weeklyRouletteCount = rouletteData.weeklyCount || 0;
-                this.lastResetDate = rouletteData.lastResetDate;
-                
-                // 주간 리셋 확인
-                this.checkWeeklyReset();
-                
-                this.updateRouletteUI();
-            }
-        } catch (error) {
-            console.error('룰렛 데이터 로드 오류:', error);
-        }
-    }
-
-    // 주간 리셋 확인
-    checkWeeklyReset() {
-        const now = new Date();
-        const lastReset = this.lastResetDate ? new Date(this.lastResetDate) : null;
-        
-        // 월요일 00:00 기준으로 리셋
-        const currentWeekStart = this.getWeekStart(now);
-        const lastWeekStart = lastReset ? this.getWeekStart(lastReset) : null;
-        
-        if (!lastWeekStart || currentWeekStart.getTime() !== lastWeekStart.getTime()) {
-            this.weeklyRouletteCount = 0;
-            this.lastResetDate = currentWeekStart.toISOString();
-            this.saveRouletteData();
-        }
-    }
-
-    // 주의 시작일 계산 (월요일 00:00)
-    getWeekStart(date) {
-        const day = date.getDay();
-        const diff = date.getDate() - day + (day === 0 ? -6 : 1); // 월요일이 1, 일요일이 0
-        const monday = new Date(date.setDate(diff));
-        monday.setHours(0, 0, 0, 0);
-        return monday;
-    }
-
-    // 룰렛 UI 업데이트
-    updateRouletteUI() {
-        // 주간 제한 표시
-        document.getElementById('weeklyLimitCount').textContent = 3 - this.weeklyRouletteCount;
-        
-        // 룰렛 버튼 활성화/비활성화
-        const spinBtn = document.getElementById('spinRouletteBtn');
-        if (this.weeklyRouletteCount >= 3) {
-            spinBtn.disabled = true;
-            spinBtn.textContent = '이번 주 한계 도달';
-        } else {
-            spinBtn.disabled = false;
-            spinBtn.innerHTML = '<i class="fas fa-play"></i> 룰렛 돌리기';
-        }
-        
-        // 기록 표시
-        this.renderRouletteHistory();
-    }
-
-    // 룰렛 돌리기
-    async spinRoulette() {
-        if (!this.currentUser) {
-            this.showNotification('로그인이 필요합니다.', 'warning');
-            return;
-        }
-
-        if (this.weeklyRouletteCount >= 3) {
-            this.showNotification('이번 주 룰렛 사용 한계에 도달했습니다.', 'warning');
-            return;
-        }
-
-        const betAmount = parseInt(document.getElementById('betAmount').value);
-        const predictedNumber = parseInt(document.getElementById('predictedNumber').value);
-
-        if (!betAmount || betAmount <= 0) {
-            this.showNotification('베팅 포인트를 입력해주세요.', 'warning');
-            return;
-        }
-
-        if (!predictedNumber) {
-            this.showNotification('예측 숫자를 선택해주세요.', 'warning');
-            return;
-        }
-
-        if (betAmount > this.getCurrentBalance()) {
-            this.showNotification('보유 포인트가 부족합니다.', 'error');
-            return;
-        }
-
-        try {
-            // 룰렛 애니메이션 시작
-            const wheel = document.getElementById('rouletteWheel');
-            wheel.classList.add('spinning');
-            
-            // 버튼 비활성화
-            const spinBtn = document.getElementById('spinRouletteBtn');
-            spinBtn.disabled = true;
-            spinBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 돌리는 중...';
-
-            // 3초 후 결과 표시
-            setTimeout(async () => {
-                wheel.classList.remove('spinning');
-                
-                // 결과 계산
-                const result = this.calculateRouletteResult();
-                const isWin = result === predictedNumber;
-                const winAmount = isWin ? betAmount * result : 0;
-                const netAmount = winAmount - betAmount;
-
-                // 결과 표시
-                this.showRouletteResult(isWin, result, predictedNumber, betAmount, winAmount, netAmount);
-
-                // 포인트 업데이트
-                await this.updateUserPoints(netAmount);
-
-                // 룰렛 기록 저장
-                this.saveRouletteResult(betAmount, predictedNumber, result, isWin, netAmount);
-
-                // 주간 카운트 증가
-                this.weeklyRouletteCount++;
-                this.updateRouletteUI();
-
-                // 버튼 재활성화
-                spinBtn.disabled = false;
-                spinBtn.innerHTML = '<i class="fas fa-play"></i> 룰렛 돌리기';
-
-                // 폼 초기화
-                document.getElementById('betAmount').value = '';
-                document.getElementById('predictedNumber').selectedIndex = 0;
-
-            }, 3000);
-
-        } catch (error) {
-            console.error('룰렛 실행 오류:', error);
-            this.showNotification('룰렛 실행 중 오류가 발생했습니다.', 'error');
-            
-            // 에러 시 버튼 재활성화
-            const spinBtn = document.getElementById('spinRouletteBtn');
-            spinBtn.disabled = false;
-            spinBtn.innerHTML = '<i class="fas fa-play"></i> 룰렛 돌리기';
-        }
-    }
-
-    // 룰렛 결과 계산 (확률 기반)
-    calculateRouletteResult() {
-        const random = Math.random() * 100;
-        
-        // 확률 분배
-        if (random < 50) return 2;      // 50%
-        if (random < 80) return 3;      // 30%
-        if (random < 95) return 5;      // 15%
-        if (random < 98) return 7;      // 3%
-        if (random < 99.5) return 10;   // 1.5%
-        return 15;                       // 0.5%
-    }
-
-    // 룰렛 결과 표시
-    showRouletteResult(isWin, result, predicted, betAmount, winAmount, netAmount) {
-        const resultDiv = document.getElementById('rouletteResult');
-        
-        const resultHTML = `
-            <div class="result-text ${isWin ? 'result-win' : 'result-lose'}">
-                ${isWin ? '🎉 당첨!' : '😢 아쉽네요...'}
-            </div>
-            <div class="result-details">
-                예측: ${predicted}배 | 결과: ${result}배<br>
-                베팅: ${betAmount}P | ${isWin ? `획득: +${winAmount}P` : `손실: -${betAmount}P`}<br>
-                <strong>${netAmount >= 0 ? '+' : ''}${netAmount}P</strong>
-            </div>
-        `;
-        
-        resultDiv.innerHTML = resultHTML;
-        resultDiv.classList.add('show');
-        
-        // 5초 후 결과 숨기기
-        setTimeout(() => {
-            resultDiv.classList.remove('show');
-        }, 5000);
-    }
-
-    // 사용자 포인트 업데이트
-    async updateUserPoints(netAmount) {
-        try {
-            const userRef = ref(database, 'users/' + this.currentUser.uid);
-            const userSnapshot = await get(userRef);
-            
-            if (userSnapshot.exists()) {
-                const userData = userSnapshot.val();
-                const currentPoints = userData.points || 0;
-                const newPoints = currentPoints + netAmount;
-                
-                await set(ref(database, 'users/' + this.currentUser.uid + '/points'), newPoints);
-                
-                // 헤더 포인트 업데이트
-                this.updateHeaderUserInfo(userData.username, newPoints);
-                this.updateBalance(newPoints);
-            }
-        } catch (error) {
-            console.error('포인트 업데이트 오류:', error);
-        }
-    }
-
-    // 룰렛 결과 저장
-    async saveRouletteResult(betAmount, predicted, result, isWin, netAmount) {
-        const rouletteRecord = {
-            timestamp: new Date().toISOString(),
-            date: new Date().toLocaleDateString('ko-KR'),
-            betAmount: betAmount,
-            predicted: predicted,
-            result: result,
-            isWin: isWin,
-            netAmount: netAmount
-        };
-
-        this.rouletteHistory.unshift(rouletteRecord);
-        
-        // 최근 10개만 유지
-        if (this.rouletteHistory.length > 10) {
-            this.rouletteHistory = this.rouletteHistory.slice(0, 10);
-        }
-
-        await this.saveRouletteData();
-        this.renderRouletteHistory();
-    }
-
-    // 룰렛 데이터 저장
-    async saveRouletteData() {
-        try {
-            const rouletteRef = ref(database, 'users/' + this.currentUser.uid + '/roulette');
-            await set(rouletteRef, {
-                history: this.rouletteHistory,
-                weeklyCount: this.weeklyRouletteCount,
-                lastResetDate: this.lastResetDate
-            });
-        } catch (error) {
-            console.error('룰렛 데이터 저장 오류:', error);
-        }
-    }
-
-    // 룰렛 기록 렌더링
-    renderRouletteHistory() {
-        const historyList = document.getElementById('rouletteHistory');
-        
-        if (this.rouletteHistory.length === 0) {
-            historyList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">아직 기록이 없습니다</div>';
-            return;
-        }
-
-        historyList.innerHTML = this.rouletteHistory.map(record => `
-            <div class="history-item">
-                <div class="history-prediction">${record.predicted}배</div>
-                <div class="history-result ${record.isWin ? 'win' : 'lose'}">
-                    ${record.isWin ? '승' : '패'}
-                </div>
-                <div class="history-amount ${record.netAmount >= 0 ? 'positive' : 'negative'}">
-                    ${record.netAmount >= 0 ? '+' : ''}${record.netAmount}P
-                </div>
-            </div>
-        `).join('');
     }
 }
 
 // 앱 초기화
 document.addEventListener('DOMContentLoaded', () => {
     new PointManager();
+});
+
+// 전역 에러 핸들링
+window.addEventListener('error', (event) => {
+    console.error('전역 에러:', event.message, event.filename, event.lineno, event.colno, event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('처리되지 않은 Promise 거부:', event.reason);
 });
