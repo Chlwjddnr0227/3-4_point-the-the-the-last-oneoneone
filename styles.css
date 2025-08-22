@@ -665,8 +665,6 @@ body {
     padding: 5px 10px;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
     transition: all 0.3s ease;
 }
 
@@ -1512,4 +1510,99 @@ body {
     .transaction-amount {
         align-self: flex-end;
     }
+}
+
+@media (max-width: 480px) {
+    .day-selector {
+        flex-wrap: wrap;
+    }
+    
+    .day-btn {
+        flex-basis: calc(33.333% - 10px);
+    }
+    
+    .earn-study-btn {
+        flex-basis: 100%;
+        margin-top: 10px;
+    }
+    
+    .input-tabs {
+        flex-direction: column;
+    }
+}
+
+/* Hide existing activity log and transaction history */
+.activity-log-section,
+.transactions-container {
+    display: none;
+}
+
+/* New Real-time Activity Log styles (restored) */
+.new-activity-log-section {
+    background: #2c3e50;
+    color: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    overflow: hidden;
+    margin-bottom: 30px; /* Added margin for spacing */
+}
+
+.new-activity-log-section .section-title {
+    color: white;
+    border-bottom: 1px solid #34495e;
+}
+
+.new-activity-log-section .section-title i {
+    color: #1abc9c;
+}
+
+.new-activity-feed {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px 25px;
+}
+
+.new-activity-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #34495e;
+    font-family: 'D2Coding', monospace;
+    font-size: 14px;
+    animation: fadeIn 0.5s ease;
+}
+
+.new-activity-item:last-child {
+    border-bottom: none;
+}
+
+.new-activity-item .timestamp {
+    color: #95a5a6;
+    margin-right: 10px;
+}
+
+.new-activity-item .username {
+    color: #1abc9c;
+    font-weight: bold;
+}
+
+.new-activity-item .action-earn {
+    color: #2ecc71;
+}
+
+.new-activity-item .action-spend {
+    color: #e74c3c;
+}
+
+.new-activity-item .amount {
+    font-weight: bold;
+}
+
+.empty-new-activity {
+    text-align: center;
+    padding: 40px 20px;
+    color: #95a5a6;
+}
+
+.empty-new-activity i {
+    font-size: 2.5rem;
+    margin-bottom: 15px;
 }

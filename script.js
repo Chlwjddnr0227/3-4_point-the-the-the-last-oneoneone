@@ -49,6 +49,7 @@ class PointManager {
         this.displayUsersPoints(); // Display all users points
         this.displayJackpot();
         this.updateUI();
+        this.loadNewGlobalActivityLog();
     }
 
     checkAuthState() {
@@ -211,6 +212,12 @@ class PointManager {
                 const newActivityRef = push(globalActivityRef);
                 const activityData = { ...transaction, userId: userId, username: this.currentUser.displayName || '알 수 없음' };
                 await set(newActivityRef, activityData);
+
+                // Add to new global activity log
+                const newGlobalActivityRef = ref(database, 'newGlobalActivity');
+                const newActivityLogRef = push(newGlobalActivityRef);
+                const newActivityLogData = { ...transaction, userId: userId, username: this.currentUser.displayName || '알 수 없음' };
+                await set(newActivityLogRef, newActivityLogData);
             }
 
             const userRef = ref(database, `users/${userId}`);
@@ -855,6 +862,7 @@ class PointManager {
     updateUI() {
         this.updateTransactionsList();
         this.updateActivityLog();
+        this.loadNewGlobalActivityLog();
     }
 
     showNotification(message, type = 'info') {
@@ -968,6 +976,47 @@ class PointManager {
         } catch (error) {
             console.error('온라인 상태 업데이트 오류:', error);
         }
+    }
+
+    loadNewGlobalActivityLog() {
+        try {
+            const newGlobalActivityRef = ref(database, 'newGlobalActivity');
+            onValue(newGlobalActivityRef, (snapshot) => {
+                const activities = snapshot.val() || {};
+                this.renderNewActivityLog(Object.values(activities));
+            });
+        } catch (error) {
+            console.error('신규 전역 활동 로그 로드 오류:', error);
+        }
+    }
+
+    renderNewActivityLog(activities) {
+        const newActivityFeed = document.getElementById('newActivityFeed');
+        const emptyNewActivity = document.getElementById('emptyNewActivity');
+        if (activities.length === 0) {
+            newActivityFeed.innerHTML = '';
+            emptyNewActivity.style.display = 'block';
+            return;
+        }
+        emptyNewActivity.style.display = 'none';
+        const sortedActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
+        newActivityFeed.innerHTML = sortedActivities.map(activity => this.createNewActivityHTML(activity)).join('');
+        newActivityFeed.scrollTop = newActivityFeed.scrollHeight;
+    }
+
+    createNewActivityHTML(activity) {
+        const isEarn = activity.type === 'earn';
+        const actionClass = isEarn ? 'action-earn' : 'action-spend';
+        const sign = isEarn ? '+' : '-';
+        const timestamp = new Date(activity.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        return `
+            <div class="new-activity-item">
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="username">${activity.username || '알 수 없음'}</span>
+                <span class="${actionClass}">${activity.reason} ${sign}${activity.amount}P</span>
+            </div>
+        `;
     }
 }
 
