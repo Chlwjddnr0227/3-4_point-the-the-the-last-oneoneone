@@ -169,6 +169,7 @@ class PointManager {
         });
         document.getElementById('adjustPointsForm').addEventListener('submit', (e) => this.saveAdjustedPoints(e));
         document.getElementById('closeAdjustModalBtn').addEventListener('click', () => this.closeModals());
+        document.getElementById('clearLogBtn').addEventListener('click', () => this.handleClearLog());
     }
 
     handleLogin() {
@@ -682,7 +683,7 @@ class PointManager {
 
         try {
             // 1. Deduct points
-            const transaction = { type: 'spend', amount: totalCost, reason: `확률 도박 (${this.gamblingMultiplier}배)` };
+            const transaction = { type: 'spend', amount: totalCost, reason: `확률 도박 (${this.gamblingMultiplier}배)`, timestamp: new Date().toISOString() };
             await this._saveTransaction(transaction);
 
             // 2. Add fee to bank profit
@@ -695,7 +696,7 @@ class PointManager {
 
             if (isWinner) {
                 const winnings = betAmount * this.gamblingMultiplier;
-                const winTransaction = { type: 'earn', amount: winnings, reason: `확률 도박 (${this.gamblingMultiplier}배) 성공!` };
+                const winTransaction = { type: 'earn', amount: winnings, reason: `확률 도박 (${this.gamblingMultiplier}배) 성공!`, timestamp: new Date().toISOString() };
                 await this._saveTransaction(winTransaction);
                 this.showNotification(`축하합니다! ${winnings}P 획득!`, 'success');
             } else {
@@ -721,7 +722,7 @@ class PointManager {
         const pointsToEarn = selectedDays.length * 100;
         const reason = `야간 자율 학습 (${Array.from(selectedDays).map(btn => btn.dataset.day).join(', ')})`;
 
-        const transaction = { type: 'earn', amount: pointsToEarn, reason };
+        const transaction = { type: 'earn', amount: pointsToEarn, reason, timestamp: new Date().toISOString() };
         await this._saveTransaction(transaction);
 
         selectedDays.forEach(btn => btn.classList.remove('active'));
@@ -1001,7 +1002,6 @@ class PointManager {
         emptyNewActivity.style.display = 'none';
         const sortedActivities = activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 50);
         newActivityFeed.innerHTML = sortedActivities.map(activity => this.createNewActivityHTML(activity)).join('');
-        newActivityFeed.scrollTop = newActivityFeed.scrollHeight;
     }
 
     createNewActivityHTML(activity) {
@@ -1017,6 +1017,30 @@ class PointManager {
                 <span class="${actionClass}">${activity.reason} ${sign}${activity.amount}P</span>
             </div>
         `;
+    }
+
+    async handleClearLog() { // Make it async
+        const password = prompt('관리자 비밀번호를 입력하세요:');
+        if (password === 'cjw03688055') {
+            try {
+                const newActivityRef = ref(database, 'newGlobalActivity');
+                await set(newActivityRef, null); // This will delete the data
+                
+                // The onValue listener will handle the UI update automatically.
+                // But for immediate feedback, we can also clear it here.
+                const newActivityFeed = document.getElementById('newActivityFeed');
+                const emptyNewActivity = document.getElementById('emptyNewActivity');
+                newActivityFeed.innerHTML = '';
+                emptyNewActivity.style.display = 'block';
+
+                this.showNotification('신규 실시간 로그가 성공적으로 초기화되었습니다.', 'success');
+            } catch (error) {
+                console.error('로그 초기화 오류:', error);
+                this.showNotification('로그 초기화 중 오류가 발생했습니다.', 'error');
+            }
+        } else if (password !== null) { // user did not cancel the prompt
+            this.showNotification('비밀번호가 올바르지 않습니다.', 'error');
+        }
     }
 }
 

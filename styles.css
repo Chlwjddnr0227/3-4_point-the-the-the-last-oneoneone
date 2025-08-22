@@ -1359,7 +1359,7 @@ body {
 .loan-form {
     padding: 20px;
     border: 2px dashed #e1e5e9;
-    border-radius: 10px;
+    border-radius: 10.px;
 }
 
 .loan-form h4 {
@@ -1605,4 +1605,28 @@ body {
 .empty-new-activity i {
     font-size: 2.5rem;
     margin-bottom: 15px;
+}
+
+/* Log Clear Button */
+.section-title-with-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clear-log-btn {
+    background: transparent;
+    border: 1px solid #4a6a8a;
+    color: #95a5a6;
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.clear-log-btn:hover {
+    background: #34495e;
+    color: #1abc9c;
+    border-color: #1abc9c;
 }
