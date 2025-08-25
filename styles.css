@@ -1789,3 +1789,50 @@ body {
 #deletePriceItemBtn:hover {
     background: #c82333;
 }
+
+/* 기부 섹션 */
+.donation-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+    padding: 25px;
+}
+
+.donation-section .section-title i {
+    color: #e74c3c;
+}
+
+.donation-form {
+    margin-top: 20px;
+}
+
+#donateBtn {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+#donateBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+}
+
+/* 기부자 목록 섹션 */
+.donators-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.donators-section .section-title i {
+    color: #3498db;
+}
+
+#donatorsTable th, #donatorsTable td {
+    padding: 15px 25px;
+}
+
+#donatorsTable td:nth-child(2) {
+    font-weight: bold;
+    color: #3498db;
+}

@@ -399,6 +399,39 @@
                         </table>
                     </div>
                 </div>
+
+                <div class="donation-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-hand-holding-heart"></i> 은행에 기부하기
+                    </h3>
+                    <div class="donation-form">
+                        <div class="form-group">
+                            <label for="donationAmount">기부 포인트</label>
+                            <input type="number" id="donationAmount" placeholder="100P 단위로 기부" min="100" step="100">
+                        </div>
+                        <button id="donateBtn" class="submit-btn"><i class="fas fa-gift"></i> 기부하기</button>
+                    </div>
+                </div>
+
+                <div class="donators-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-users"></i> 기부자 목록
+                    </h3>
+                    <div class="table-container">
+                        <table id="donatorsTable">
+                            <thead>
+                                <tr>
+                                    <th>기부자</th>
+                                    <th>기부액</th>
+                                    <th>날짜</th>
+                                </tr>
+                            </thead>
+                            <tbody id="donatorsTableBody">
+                                <!-- 기부자 목록이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             </div>

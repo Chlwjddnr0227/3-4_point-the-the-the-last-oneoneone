@@ -53,6 +53,7 @@ class PointManager {
         this.displayJackpot();
         this.displayPriceList();
         this.displayContributionList(); // New
+        this.displayDonations();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -190,6 +191,7 @@ class PointManager {
         document.getElementById('priceItemForm').addEventListener('submit', (e) => this.handleItemFormSubmit(e));
         document.getElementById('closePriceItemModalBtn').addEventListener('click', () => this.closeItemModal());
         document.getElementById('deletePriceItemBtn').addEventListener('click', () => this.handleDeleteItem());
+        document.getElementById('donateBtn').addEventListener('click', () => this.handleDonation());
     }
 
     handleLogin() {
@@ -1262,6 +1264,70 @@ class PointManager {
             console.error("Item delete error:", error);
             this.showNotification('항목 삭제 중 오류가 발생했습니다.', 'error');
         }
+    }
+
+    async handleDonation() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+
+        const amount = parseInt(document.getElementById('donationAmount').value);
+        if (!amount || amount <= 0 || amount % 100 !== 0) {
+            return this.showNotification('기부금은 100P 단위로 입력해주세요.', 'warning');
+        }
+
+        if (this.getCurrentBalance() < amount) {
+            return this.showNotification('보유 포인트가 부족합니다.', 'error');
+        }
+
+        try {
+            // 1. Deduct points from user
+            const transaction = { type: 'spend', amount, reason: '은행 기부', timestamp: new Date().toISOString() };
+            await this._saveTransaction(transaction);
+
+            // 2. Add points to bank profit
+            const profitRef = ref(database, 'globalStats/bankProfit');
+            await update(profitRef, { total: increment(amount), 'byType/기부': increment(amount) });
+
+            // 3. Record the donation
+            const donationRecord = {
+                username: this.currentUser.displayName || '알 수 없음',
+                amount,
+                timestamp: new Date().toISOString()
+            };
+            const newDonationRef = push(ref(database, 'donations'));
+            await set(newDonationRef, donationRecord);
+
+            this.showNotification('기부해주셔서 감사합니다!', 'success');
+            document.getElementById('donationAmount').value = '';
+
+        } catch (error) {
+            console.error("Donation error:", error);
+            this.showNotification('기부 처리 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    displayDonations() {
+        const donationsRef = ref(database, 'donations');
+        onValue(donationsRef, (snapshot) => {
+            const donations = snapshot.val() || {};
+            const tableBody = document.getElementById('donatorsTableBody');
+            tableBody.innerHTML = '';
+            const sortedDonations = Object.values(donations).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            if (sortedDonations.length > 0) {
+                sortedDonations.forEach(donation => {
+                    const row = `
+                        <tr>
+                            <td>${donation.username}</td>
+                            <td>${donation.amount}P</td>
+                            <td>${new Date(donation.timestamp).toLocaleDateString('ko-KR')}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">아직 기부자가 없습니다.</td></tr>';
+            }
+        });
     }
 }
 
