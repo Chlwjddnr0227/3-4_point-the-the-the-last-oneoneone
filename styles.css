@@ -1281,8 +1281,7 @@ body {
     align-items: center;
     gap: 10px;
     margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 2px solid #f0f0f0;
 }
 
 .loan-section .section-title i {
@@ -1629,4 +1628,164 @@ body {
     background: #34495e;
     color: #1abc9c;
     border-color: #1abc9c;
+}
+
+
+
+
+
+
+
+/* 물품 가격표 섹션 */
+.price-list-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    overflow: hidden;
+    padding: 25px;
+    margin-top: 30px;
+}
+
+.price-list-section .section-title {
+    color: #333;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* To space out title and button */
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.price-list-section .section-title i {
+    color: #e67e22; /* A different color for distinction */
+}
+
+.price-list-section .section-title i.fa-hands-helping {
+    color: #3498db; /* A nice blue color for the new section */
+}
+
+.price-list-section .table-container {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+#priceListTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#priceListTable th, #priceListTable td {
+    padding: 10px 5px; /* Adjusted padding */
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#priceListTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#priceListTable td {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+#priceListTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#priceListTable .item-name {
+    font-weight: 600;
+}
+
+#priceListTable .item-price {
+    text-align: right;
+    font-weight: bold;
+    color: #3498db;
+}
+
+#priceListTable .item-actions {
+    text-align: right;
+}
+
+.price-edit-header {
+    text-align: right;
+}
+
+.edit-btn, .add-btn {
+    background: transparent;
+    border: none;
+    color: #667eea;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.edit-btn:hover, .add-btn:hover {
+    background: #f0f2f5;
+}
+
+.add-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    margin-top: 10px;
+    border: 2px dashed #e1e5e9;
+    color: #666;
+    font-weight: 600;
+}
+
+.add-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f8f9fa;
+}
+
+#priceListTable .action-btn-group {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+#priceListTable .edit-item-btn, #priceListTable .delete-item-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+#priceListTable .edit-item-btn {
+    color: #ffc107;
+}
+#priceListTable .edit-item-btn:hover {
+    background-color: #fff8e1;
+}
+
+#priceListTable .delete-item-btn {
+    color: #dc3545;
+}
+#priceListTable .delete-item-btn:hover {
+    background-color: #fbe9eb;
+}
+
+#deletePriceItemBtn {
+    background: #dc3545;
+    color: white;
+    margin-right: auto; /* Pushes it to the left */
+}
+#deletePriceItemBtn:hover {
+    background: #c82333;
 }

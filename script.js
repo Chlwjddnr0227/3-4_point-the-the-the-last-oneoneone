@@ -30,6 +30,9 @@ class PointManager {
         this.probabilities = { 2: 0.50, 3: 0.33, 5: 0.20, 10: 0.10, 15: 0.07 };
         this.afterPasswordCallback = null;
         this.userToAdjust = null;
+        this.isPriceListEditMode = false;
+        this.isContributionListEditMode = false; // New
+        this.editingListType = null; // New
         this.init();
     }
 
@@ -48,6 +51,8 @@ class PointManager {
         this.displayBankSpendingHistory();
         this.displayUsersPoints(); // Display all users points
         this.displayJackpot();
+        this.displayPriceList();
+        this.displayContributionList(); // New
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -170,6 +175,21 @@ class PointManager {
         document.getElementById('adjustPointsForm').addEventListener('submit', (e) => this.saveAdjustedPoints(e));
         document.getElementById('closeAdjustModalBtn').addEventListener('click', () => this.closeModals());
         document.getElementById('clearLogBtn').addEventListener('click', () => this.handleClearLog());
+
+        // Price List Events
+        document.getElementById('editPriceListBtn').addEventListener('click', () => this.handleEditListClick('priceList'));
+        document.getElementById('addPriceItemBtn').addEventListener('click', () => this.openItemModal('priceList'));
+        document.getElementById('priceListTableBody').addEventListener('click', (e) => this.handleListActions(e, 'priceList'));
+
+        // Contribution List Events
+        document.getElementById('editContributionListBtn').addEventListener('click', () => this.handleEditListClick('contributionList'));
+        document.getElementById('addContributionItemBtn').addEventListener('click', () => this.openItemModal('contributionList'));
+        document.getElementById('contributionListTableBody').addEventListener('click', (e) => this.handleListActions(e, 'contributionList'));
+
+        // Shared Modal Events
+        document.getElementById('priceItemForm').addEventListener('submit', (e) => this.handleItemFormSubmit(e));
+        document.getElementById('closePriceItemModalBtn').addEventListener('click', () => this.closeItemModal());
+        document.getElementById('deletePriceItemBtn').addEventListener('click', () => this.handleDeleteItem());
     }
 
     handleLogin() {
@@ -386,7 +406,8 @@ class PointManager {
         });
     }
 
-    openPasswordModal() {
+    openPasswordModal(message = '은행 수익을 사용하려면 비밀번호를 입력하세요.') {
+        document.getElementById('passwordModal').querySelector('p').textContent = message;
         document.getElementById('passwordModal').classList.remove('hidden');
     }
 
@@ -533,8 +554,8 @@ class PointManager {
     displayJackpot() {
         const jackpotRef = ref(database, 'globalStats/jackpot');
         onValue(jackpotRef, (snapshot) => {
-            const data = snapshot.val() || { amount: 1000, winners: {} };
-            document.getElementById('jackpotAmount').textContent = `${data.amount || 1000}P`;
+            const data = snapshot.val() || { amount: 0, winners: {} };
+            document.getElementById('jackpotAmount').textContent = `${data.amount || 0}P`;
             
             const winnersList = document.getElementById('jackpotWinnersList');
             winnersList.innerHTML = '';
@@ -600,7 +621,7 @@ class PointManager {
                 const newWinnerRef = push(ref(database, 'globalStats/jackpot/winners'));
                 await set(newWinnerRef, winnerInfo);
 
-                await set(ref(database, 'globalStats/jackpot/amount'), 1000); // Reset jackpot
+                await set(ref(database, 'globalStats/jackpot/amount'), 0); // Reset jackpot
 
                 this.showNotification(`축하합니다! ${jackpotAmount}P 잭팟에 당첨되셨습니다!`, 'success');
             } else {
@@ -621,7 +642,7 @@ class PointManager {
     runJackpotAnimation() {
         return new Promise(resolve => {
             const scrollers = [document.getElementById('scroller1'), document.getElementById('scroller2'), document.getElementById('scroller3')];
-            const numbers = [1, 2, 3];
+            const numbers = [1, 3, 5, 7, 9];
             let finalResult = [];
 
             scrollers.forEach((scroller, i) => {
@@ -643,7 +664,7 @@ class PointManager {
             setTimeout(() => {
                 scrollers.forEach((scroller, i) => {
                     scroller.classList.remove('spinning');
-                    const resultNum = Math.floor(Math.random() * 3) + 1;
+                    const resultNum = numbers[Math.floor(Math.random() * numbers.length)];
                     finalResult.push(resultNum);
                     scroller.innerHTML = `<div style="font-size: 40px; line-height: 80px;">${resultNum}</div>`;
                 });
@@ -1040,6 +1061,206 @@ class PointManager {
             }
         } else if (password !== null) { // user did not cancel the prompt
             this.showNotification('비밀번호가 올바르지 않습니다.', 'error');
+        }
+    }
+
+    // ------------------- List Management Methods -------------------
+
+    displayList(listType) {
+        const listRef = ref(database, listType);
+        onValue(listRef, (snapshot) => {
+            const items = snapshot.val() || {};
+            this.renderList(listType, items);
+        });
+    }
+
+    displayPriceList() {
+        this.displayList('priceList');
+    }
+
+    displayContributionList() {
+        this.displayList('contributionList');
+    }
+
+    renderList(listType, items) {
+        const isEditMode = listType === 'priceList' ? this.isPriceListEditMode : this.isContributionListEditMode;
+        const tableBody = document.getElementById(`${listType}TableBody`);
+        
+        tableBody.innerHTML = '';
+        const sortedItems = Object.keys(items).map(key => ({ id: key, ...items[key] })).sort((a, b) => a.name.localeCompare(b.name));
+
+        if (sortedItems.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="${isEditMode ? 3 : 2}" style="text-align:center; padding: 20px;">아직 항목이 없습니다.</td></tr>`;
+            return;
+        }
+
+        sortedItems.forEach(item => {
+            const row = document.createElement('tr');
+            row.dataset.id = item.id;
+
+            let rowHTML = `
+                <td class="item-name">${item.name}</td>
+                <td class="item-price">${item.price}P</td>
+            `;
+
+            if (isEditMode) {
+                rowHTML += `
+                <td class="item-actions">
+                    <div class="action-btn-group">
+                        <button class="edit-item-btn" title="수정"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-item-btn" title="삭제"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>`;
+            }
+            row.innerHTML = rowHTML;
+            tableBody.appendChild(row);
+        });
+    }
+
+    handleEditListClick(listType) {
+        this.afterPasswordCallback = () => this.toggleListEditMode(listType);
+        const message = listType === 'priceList' ? '가격표를 수정하려면 비밀번호를 입력하세요.' : '기준표를 수정하려면 비밀번호를 입력하세요.';
+        this.openPasswordModal(message);
+    }
+
+    toggleListEditMode(listType) {
+        const editModeFlag = listType === 'priceList' ? 'isPriceListEditMode' : 'isContributionListEditMode';
+        this[editModeFlag] = !this[editModeFlag];
+        
+        const editBtn = document.getElementById(`edit${listType.charAt(0).toUpperCase() + listType.slice(1)}Btn`);
+        const addBtn = document.getElementById(`add${listType.charAt(0).toUpperCase() + listType.slice(1)}ItemBtn`);
+        const editHeader = document.querySelector(`#${listType}Table .${listType.slice(0, -4)}-edit-header`);
+
+        editBtn.classList.toggle('active', this[editModeFlag]);
+        addBtn.classList.toggle('hidden', !this[editModeFlag]);
+        if(editHeader) editHeader.classList.toggle('hidden', !this[editModeFlag]);
+
+        if (this[editModeFlag]) {
+            editBtn.innerHTML = '<i class="fas fa-check"></i>';
+            editBtn.title = '수정 완료';
+        } else {
+            editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+            editBtn.title = listType === 'priceList' ? '가격표 수정' : '기준표 수정';
+        }
+
+        const listRef = ref(database, listType);
+        get(listRef).then(snapshot => {
+            const items = snapshot.val() || {};
+            this.renderList(listType, items);
+        });
+    }
+
+    openItemModal(listType, item = null) {
+        this.editingListType = listType;
+        const modal = document.getElementById('priceItemModal');
+        const modalTitle = document.getElementById('priceItemModalTitle');
+        const form = document.getElementById('priceItemForm');
+        const deleteBtn = document.getElementById('deletePriceItemBtn');
+        const nameLabel = form.querySelector('label[for="itemNameInput"]');
+        const priceLabel = form.querySelector('label[for="itemPriceInput"]');
+
+        form.reset();
+        document.getElementById('priceItemId').value = '';
+
+        if (listType === 'priceList') {
+            modalTitle.textContent = item ? '물품 수정' : '물품 추가';
+            nameLabel.textContent = '물품 이름';
+            priceLabel.textContent = '가격';
+        } else {
+            modalTitle.textContent = item ? '활동 수정' : '활동 추가';
+            nameLabel.textContent = '활동 이름';
+            priceLabel.textContent = '지급 포인트';
+        }
+
+        if (item) {
+            document.getElementById('priceItemId').value = item.id;
+            document.getElementById('itemNameInput').value = item.name;
+            document.getElementById('itemPriceInput').value = item.price;
+            deleteBtn.classList.remove('hidden');
+        } else {
+            deleteBtn.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+    }
+
+    closeItemModal() {
+        document.getElementById('priceItemModal').classList.add('hidden');
+        this.editingListType = null;
+    }
+
+    async handleItemFormSubmit(e) {
+        e.preventDefault();
+        if (!this.editingListType) return;
+
+        const id = document.getElementById('priceItemId').value;
+        const name = document.getElementById('itemNameInput').value.trim();
+        const price = parseInt(document.getElementById('itemPriceInput').value);
+
+        if (!name || isNaN(price) || price < 0) {
+            return this.showNotification('이름과 값을 올바르게 입력하세요.', 'warning');
+        }
+
+        const itemData = { name, price };
+        const listType = this.editingListType;
+
+        try {
+            let itemRef;
+            if (id) {
+                itemRef = ref(database, `${listType}/${id}`);
+            } else {
+                itemRef = push(ref(database, listType));
+            }
+            await set(itemRef, itemData);
+            this.showNotification(id ? '항목이 수정되었습니다.' : '항목이 추가되었습니다.', 'success');
+            this.closeItemModal();
+        } catch (error) {
+            console.error("Item save error:", error);
+            this.showNotification('항목 저장 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    handleListActions(e, listType) {
+        const isEditMode = listType === 'priceList' ? this.isPriceListEditMode : this.isContributionListEditMode;
+        if (!isEditMode) return;
+
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const row = target.closest('tr');
+        const itemId = row.dataset.id;
+
+        const listRef = ref(database, `${listType}/${itemId}`);
+        get(listRef).then(snapshot => {
+            if (!snapshot.exists()) {
+                this.showNotification('해당 항목을 찾을 수 없습니다.', 'error');
+                return;
+            }
+            const item = { id: itemId, ...snapshot.val() };
+
+            if (target.classList.contains('edit-item-btn') || target.classList.contains('delete-item-btn')) {
+                this.openItemModal(listType, item);
+            }
+        });
+    }
+
+    async handleDeleteItem() {
+        if (!this.editingListType) return;
+        const listType = this.editingListType;
+        const id = document.getElementById('priceItemId').value;
+        if (!id) return;
+
+        if (!confirm('정말로 이 항목을 삭제하시겠습니까?')) {
+            return;
+        }
+
+        try {
+            await set(ref(database, `${listType}/${id}`), null);
+            this.showNotification('항목이 삭제되었습니다.', 'success');
+            this.closeItemModal();
+        } catch (error) {
+            console.error("Item delete error:", error);
+            this.showNotification('항목 삭제 중 오류가 발생했습니다.', 'error');
         }
     }
 }
