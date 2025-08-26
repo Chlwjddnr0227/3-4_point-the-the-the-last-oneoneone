@@ -59,9 +59,10 @@
                     </div>
                 </div>
 
-                <div class="jackpot-section">
+                <div class="jackpot-section closable-section">
                     <h3 class="section-title">
                         <i class="fas fa-trophy"></i> 잭팟 시스템
+                        <button class="toggle-section-btn" data-section="jackpot-section"><i class="fas fa-eye-slash"></i></button>
                     </h3>
                     <div class="jackpot-display">
                         <h4>현재 잭팟</h4>
@@ -86,9 +87,10 @@
                     </div>
                 </div>
 
-                <div class="gambling-section">
+                <div class="gambling-section closable-section">
                     <h3 class="section-title">
                         <i class="fas fa-balance-scale"></i> 확률 도박기
+                        <button class="toggle-section-btn" data-section="gambling-section"><i class="fas fa-eye-slash"></i></button>
                     </h3>
                     <div class="multiplier-options">
                         <button class="multiplier-btn active" data-multiplier="2" data-prob="50">2배 (50%)</button>
@@ -107,6 +109,32 @@
                         <small>수수료: 베팅 금액 100P당 1P</small>
                     </div>
                     <button id="placeBetBtn" class="place-bet-btn">
+                        <i class="fas fa-dice"></i> 베팅하기!
+                    </button>
+                </div>
+
+                <div id="basic-gambling-section" class="gambling-section closable-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-balance-scale"></i> 기본 확률 도박기
+                        <button class="toggle-section-btn" data-section="basic-gambling-section"><i class="fas fa-eye-slash"></i></button>
+                    </h3>
+                    <div class="multiplier-options">
+                        <button class="multiplier-btn active" data-multiplier="2" data-prob="45">2배 (45%)</button>
+                        <button class="multiplier-btn" data-multiplier="3" data-prob="30">3배 (30%)</button>
+                        <button class="multiplier-btn" data-multiplier="5" data-prob="18">5배 (18%)</button>
+                        <button class="multiplier-btn" data-multiplier="10" data-prob="9">10배 (9%)</button>
+                        <button class="multiplier-btn" data-multiplier="15" data-prob="6">15배 (6%)</button>
+                    </div>
+                    <div class="bet-controls">
+                        <h4>베팅 금액</h4>
+                        <div class="bet-amount-control">
+                            <button id="basic-decreaseBetBtn" class="bet-adjust-btn">-</button>
+                            <span id="basic-betAmountDisplay">100</span>P
+                            <button id="basic-increaseBetBtn" class="bet-adjust-btn">+</button>
+                        </div>
+                        <small>수수료: 베팅 금액 100P당 1P</small>
+                    </div>
+                    <button id="basic-placeBetBtn" class="place-bet-btn">
                         <i class="fas fa-dice"></i> 베팅하기!
                     </button>
                 </div>

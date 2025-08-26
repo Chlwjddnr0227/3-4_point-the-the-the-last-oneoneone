@@ -28,9 +28,15 @@ class PointManager {
         this.gamblingMultiplier = 2;
         this.gamblingBetAmount = 100;
         this.probabilities = { 2: 0.50, 3: 0.33, 5: 0.20, 10: 0.10, 15: 0.07 };
+        this.basicGamblingMultiplier = 2;
+        this.basicGamblingBetAmount = 100;
+        this.basicProbabilities = { 2: 0.45, 3: 0.30, 5: 0.18, 10: 0.09, 15: 0.06 };
         this.afterPasswordCallback = null;
         this.userToAdjust = null;
         this.editingListType = null; // New
+        this.isJackpotOpen = true;
+        this.isGamblingOpen = true;
+        this.isBasicGamblingOpen = true;
         this.init();
     }
 
@@ -51,6 +57,7 @@ class PointManager {
         this.displayJackpot();
         this.displayDonations();
         this.displayLoanLimits();
+        this.initializeSectionStates();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -155,10 +162,16 @@ class PointManager {
         document.getElementById('tryJackpotBtn').addEventListener('click', () => this.tryJackpot());
 
         // Gambling Events
-        document.querySelectorAll('.multiplier-btn').forEach(btn => btn.addEventListener('click', (e) => this.selectMultiplier(e)));
-        document.getElementById('decreaseBetBtn').addEventListener('click', () => this.adjustBet(-100));
-        document.getElementById('increaseBetBtn').addEventListener('click', () => this.adjustBet(100));
-        document.getElementById('placeBetBtn').addEventListener('click', () => this.placeBet());
+        document.querySelectorAll('.gambling-section:not(#basic-gambling-section) .multiplier-btn').forEach(btn => btn.addEventListener('click', (e) => this.selectMultiplier(e, 'standard')));
+        document.getElementById('decreaseBetBtn').addEventListener('click', () => this.adjustBet(-100, 'standard'));
+        document.getElementById('increaseBetBtn').addEventListener('click', () => this.adjustBet(100, 'standard'));
+        document.getElementById('placeBetBtn').addEventListener('click', () => this.placeBet('standard'));
+
+        // Basic Gambling Events
+        document.querySelectorAll('#basic-gambling-section .multiplier-btn').forEach(btn => btn.addEventListener('click', (e) => this.selectMultiplier(e, 'basic')));
+        document.getElementById('basic-decreaseBetBtn').addEventListener('click', () => this.adjustBet(-100, 'basic'));
+        document.getElementById('basic-increaseBetBtn').addEventListener('click', () => this.adjustBet(100, 'basic'));
+        document.getElementById('basic-placeBetBtn').addEventListener('click', () => this.placeBet('basic'));
 
         // Self-study Events
         document.querySelectorAll('.day-btn').forEach(btn => btn.addEventListener('click', (e) => e.currentTarget.classList.toggle('active')));
@@ -180,6 +193,9 @@ class PointManager {
         document.getElementById('loanLimitTableBody').addEventListener('click', (e) => this.handleEditLoanLimitClick(e));
         document.getElementById('editLoanLimitForm').addEventListener('submit', (e) => this.saveLoanLimit(e));
         document.getElementById('closeLoanLimitModalBtn').addEventListener('click', () => this.closeModals());
+
+        // Toggle Section Events
+        document.querySelectorAll('.toggle-section-btn').forEach(btn => btn.addEventListener('click', (e) => this.handleToggleSection(e)));
     }
 
     handleLogin() {
@@ -680,24 +696,43 @@ class PointManager {
         });
     }
 
-    selectMultiplier(e) {
-        this.gamblingMultiplier = parseInt(e.target.dataset.multiplier);
-        document.querySelectorAll('.multiplier-btn').forEach(btn => btn.classList.remove('active'));
+    selectMultiplier(e, type = 'standard') {
+        const multiplier = parseInt(e.target.dataset.multiplier);
+        if (type === 'standard') {
+            this.gamblingMultiplier = multiplier;
+            document.querySelectorAll('.gambling-section:not(#basic-gambling-section) .multiplier-btn').forEach(btn => btn.classList.remove('active'));
+        } else {
+            this.basicGamblingMultiplier = multiplier;
+            document.querySelectorAll('#basic-gambling-section .multiplier-btn').forEach(btn => btn.classList.remove('active'));
+        }
         e.target.classList.add('active');
     }
 
-    adjustBet(amount) {
-        this.gamblingBetAmount += amount;
-        if (this.gamblingBetAmount < 100) {
-            this.gamblingBetAmount = 100;
+    adjustBet(amount, type = 'standard') {
+        if (type === 'standard') {
+            this.gamblingBetAmount += amount;
+            if (this.gamblingBetAmount < 100) {
+                this.gamblingBetAmount = 100;
+            }
+            document.getElementById('betAmountDisplay').textContent = this.gamblingBetAmount;
+        } else {
+            this.basicGamblingBetAmount += amount;
+            if (this.basicGamblingBetAmount < 100) {
+                this.basicGamblingBetAmount = 100;
+            }
+            document.getElementById('basic-betAmountDisplay').textContent = this.basicGamblingBetAmount;
         }
-        document.getElementById('betAmountDisplay').textContent = this.gamblingBetAmount;
     }
 
-    async placeBet() {
+    async placeBet(type = 'standard') {
         if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
 
-        const betAmount = this.gamblingBetAmount;
+        const betAmount = type === 'standard' ? this.gamblingBetAmount : this.basicGamblingBetAmount;
+        const multiplier = type === 'standard' ? this.gamblingMultiplier : this.basicGamblingMultiplier;
+        const probabilities = type === 'standard' ? this.probabilities : this.basicProbabilities;
+        const placeBetBtn = type === 'standard' ? document.getElementById('placeBetBtn') : document.getElementById('basic-placeBetBtn');
+        const reasonText = type === 'standard' ? '확률 도박' : '기본 확률 도박';
+
         const fee = Math.floor(betAmount / 100);
         const totalCost = betAmount + fee;
 
@@ -705,13 +740,12 @@ class PointManager {
             return this.showNotification('포인트가 부족합니다.', 'error');
         }
 
-        const placeBetBtn = document.getElementById('placeBetBtn');
         placeBetBtn.disabled = true;
         placeBetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 베팅 중...';
 
         try {
             // 1. Deduct points
-            const transaction = { type: 'spend', amount: totalCost, reason: `확률 도박 (${this.gamblingMultiplier}배)`, timestamp: new Date().toISOString() };
+            const transaction = { type: 'spend', amount: totalCost, reason: `${reasonText} (${multiplier}배)`, timestamp: new Date().toISOString() };
             await this._saveTransaction(transaction);
 
             // 2. Add fee to bank profit
@@ -719,12 +753,12 @@ class PointManager {
             await update(bankProfitRef, { total: increment(fee), 'byType/확률도박': increment(fee) });
 
             // 3. Roll the dice
-            const probability = this.probabilities[this.gamblingMultiplier];
+            const probability = probabilities[multiplier];
             const isWinner = Math.random() < probability;
 
             if (isWinner) {
-                const winnings = betAmount * this.gamblingMultiplier;
-                const winTransaction = { type: 'earn', amount: winnings, reason: `확률 도박 (${this.gamblingMultiplier}배) 성공!`, timestamp: new Date().toISOString() };
+                const winnings = betAmount * multiplier;
+                const winTransaction = { type: 'earn', amount: winnings, reason: `${reasonText} (${multiplier}배) 성공!`, timestamp: new Date().toISOString() };
                 await this._saveTransaction(winTransaction);
                 this.showNotification(`축하합니다! ${winnings}P 획득!`, 'success');
             } else {
@@ -1201,6 +1235,51 @@ class PointManager {
 
         this.showNotification('대출 한도가 성공적으로 수정되었습니다.', 'success');
         this.closeModals();
+    }
+
+    initializeSectionStates() {
+        this.toggleSection('jackpot-section', this.isJackpotOpen, false);
+        this.toggleSection('gambling-section', this.isGamblingOpen, false);
+        this.toggleSection('basic-gambling-section', this.isBasicGamblingOpen, false);
+    }
+
+    handleToggleSection(e) {
+        const sectionId = e.currentTarget.dataset.section;
+        this.afterPasswordCallback = () => {
+            if (sectionId === 'jackpot-section') {
+                this.isJackpotOpen = !this.isJackpotOpen;
+                this.toggleSection(sectionId, this.isJackpotOpen);
+            } else if (sectionId === 'gambling-section') {
+                this.isGamblingOpen = !this.isGamblingOpen;
+                this.toggleSection(sectionId, this.isGamblingOpen);
+            } else if (sectionId === 'basic-gambling-section') {
+                this.isBasicGamblingOpen = !this.isBasicGamblingOpen;
+                this.toggleSection(sectionId, this.isBasicGamblingOpen);
+            }
+        };
+        this.openPasswordModal('섹션을 열거나 닫으려면 비밀번호를 입력하세요.');
+    }
+
+    toggleSection(sectionId, isOpen, animate = true) {
+        const sectionElement = document.querySelector(`.${sectionId}`);
+        const buttonIcon = sectionElement.querySelector('.toggle-section-btn i');
+        if (isOpen) {
+            if (animate) {
+                sectionElement.style.display = 'block';
+            } else {
+                sectionElement.classList.remove('closed');
+            }
+            buttonIcon.classList.remove('fa-eye');
+            buttonIcon.classList.add('fa-eye-slash');
+        } else {
+            if (animate) {
+                sectionElement.classList.add('closed');
+            } else {
+                sectionElement.style.display = 'none';
+            }
+            buttonIcon.classList.remove('fa-eye-slash');
+            buttonIcon.classList.add('fa-eye');
+        }
     }
 }
 

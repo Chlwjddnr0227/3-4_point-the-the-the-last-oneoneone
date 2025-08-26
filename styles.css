@@ -1738,3 +1738,23 @@ body {
 .edit-loan-limit-btn:hover {
     background: #e0a800;
 }
+
+.toggle-section-btn {
+    background: transparent;
+    border: none;
+    color: #999;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    margin-left: auto;
+}
+
+.toggle-section-btn:hover {
+    color: #333;
+}
+
+.closable-section.closed > *:not(.section-title) {
+    display: none;
+}
