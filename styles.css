@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -1770,4 +1772,37 @@ body {
     padding: 20px;
     font-size: 1.2rem;
     color: #999;
+}
+
+/* 메모 섹션 */
+.memo-section {
+    background: #fffaf0; /* A light yellow, like a memo pad */
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1), 0 0 0 1px #f0e6d2;
+    margin-top: 25px;
+    border-left: 5px solid #f39c12;
+}
+
+.memo-section .section-title i {
+    color: #f39c12;
+}
+
+.memo-content {
+    padding: 15px;
+    border: none;
+    border-radius: 0;
+    min-height: 150px;
+    margin-top: 15px;
+    line-height: 1.8;
+    font-family: 'Nanum Pen Script', cursive; /* A handwriting font */
+    font-size: 1.2rem;
+    color: #555;
+    background-image: linear-gradient(to bottom, #fffaf0 1px, #e1e5e9 1px);
+    background-size: 100% 1.8rem;
+}
+
+.memo-content:focus {
+    outline: none;
+    box-shadow: none;
 }

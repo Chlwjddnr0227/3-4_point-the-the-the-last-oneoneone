@@ -37,6 +37,7 @@ class PointManager {
         this.isJackpotOpen = true;
         this.isGamblingOpen = true;
         this.isBasicGamblingOpen = true;
+        this.isMemoEditMode = false;
         this.init();
     }
 
@@ -58,6 +59,7 @@ class PointManager {
         this.displayDonations();
         this.displayLoanLimits();
         this.initializeSectionStates();
+        this.loadMemoContent();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -196,6 +198,9 @@ class PointManager {
 
         // Toggle Section Events
         document.querySelectorAll('.toggle-section-btn').forEach(btn => btn.addEventListener('click', (e) => this.handleToggleSection(e)));
+
+        // Memo Events
+        document.getElementById('editMemoBtn').addEventListener('click', () => this.handleMemoClick());
     }
 
     handleLogin() {
@@ -1278,6 +1283,47 @@ class PointManager {
             buttonIcon.classList.remove('fa-eye-slash');
             buttonIcon.classList.add('fa-eye');
         }
+    }
+
+    loadMemoContent() {
+        const memoRef = ref(database, 'memo/content');
+        onValue(memoRef, (snapshot) => {
+            const memoContent = snapshot.val() || '<p>여기에 공지사항을 입력하세요.</p>';
+            document.getElementById('memo-content').innerHTML = memoContent;
+        });
+    }
+
+    handleMemoClick() {
+        if (this.isMemoEditMode) {
+            this.saveMemoContent();
+        } else {
+            this.afterPasswordCallback = () => this.enableMemoEditMode();
+            this.openPasswordModal('메모를 수정하려면 비밀번호를 입력하세요.');
+        }
+    }
+
+    enableMemoEditMode() {
+        this.isMemoEditMode = true;
+        const memoContent = document.getElementById('memo-content');
+        memoContent.contentEditable = true;
+        memoContent.focus();
+        const editBtn = document.getElementById('editMemoBtn');
+        editBtn.innerHTML = '<i class="fas fa-save"></i>';
+        editBtn.title = '메모 저장';
+    }
+
+    async saveMemoContent() {
+        const memoContent = document.getElementById('memo-content').innerHTML;
+        const memoRef = ref(database, 'memo/content');
+        await set(memoRef, memoContent);
+
+        this.isMemoEditMode = false;
+        document.getElementById('memo-content').contentEditable = false;
+        const editBtn = document.getElementById('editMemoBtn');
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        editBtn.title = '메모 수정';
+
+        this.showNotification('메모가 저장되었습니다.', 'success');
     }
 }
 
