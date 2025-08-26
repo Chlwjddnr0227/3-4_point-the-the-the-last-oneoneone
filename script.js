@@ -61,6 +61,7 @@ class PointManager {
         this.initializeSectionStates();
         this.loadMemoContent();
         this.displayGamblerRanking();
+        this.displayAllUsersLoanStatus();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -352,6 +353,7 @@ class PointManager {
         document.getElementById('loanInterestAmount').value = '';
         this.currentLoanType = null;
         this._calculateAndApplyInterest();
+        this.displayAllUsersLoanStatus();
     }
 
     async handleRepayment(e) {
@@ -385,6 +387,7 @@ class PointManager {
 
         this.showNotification('대출 상환이 완료되었습니다.', 'success');
         this._calculateAndApplyInterest();
+        this.displayAllUsersLoanStatus();
     }
 
     displayBankProfit() {
@@ -1412,6 +1415,54 @@ class PointManager {
             });
         } else {
             tableBody.innerHTML = '<tr><td colspan="4">아직 도박을 한 사용자가 없습니다.</td></tr>';
+        }
+    }
+
+    async displayAllUsersLoanStatus() {
+        const usersRef = ref(database, 'users');
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.val() || {};
+
+        const tableBody = document.getElementById('allUsersLoanStatusTableBody');
+        tableBody.innerHTML = '';
+
+        let hasActiveLoans = false;
+
+        for (const uid in usersData) {
+            const user = usersData[uid];
+            const loans = user.loans || {};
+
+            for (const loanId in loans) {
+                const loan = loans[loanId];
+                if (loan.status === 'active') {
+                    hasActiveLoans = true;
+                    let interestHtml = '-';
+                    if (loan.type === '테스트용 대출') {
+                        interestHtml = `+${loan.interest}P (일시불)`;
+                    } else if (loan.interestRate > 0) {
+                        const weeklyInterest = Math.floor(loan.amountDue * loan.interestRate);
+                        const lastDate = new Date(loan.lastInterestAppliedDate);
+                        lastDate.setDate(lastDate.getDate() + 7);
+                        const nextInterestDateStr = lastDate.toISOString().split('T')[0];
+                        interestHtml = `+${weeklyInterest}P (${nextInterestDateStr})`;
+                    }
+
+                    const row = `
+                        <tr>
+                            <td>${user.username || '알 수 없음'}</td>
+                            <td>${loan.type}</td>
+                            <td>${loan.principal}P</td>
+                            <td>${loan.amountDue}P</td>
+                            <td>${interestHtml}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                }
+            }
+        }
+
+        if (!hasActiveLoans) {
+            tableBody.innerHTML = '<tr><td colspan="5">활성화된 대출이 없습니다.</td></tr>';
         }
     }
 }

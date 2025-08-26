@@ -1851,7 +1851,52 @@ body {
     color: #9b59b6;
 }
 
+.gambler-ranking-section {
+    min-height: 150px; /* Or a suitable height */
+    display: block; /* Ensure it's displayed */
+}
+
 .gambler-ranking-section .table-container {
     max-height: 200px;
     overflow-y: auto;
+}
+
+/* 모든 사용자의 대출 현황 섹션 */
+.all-users-loan-status-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 25px;
+}
+
+.all-users-loan-status-section .section-title i {
+    color: #6c757d;
+}
+
+#allUsersLoanStatusTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#allUsersLoanStatusTable th, #allUsersLoanStatusTable td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#allUsersLoanStatusTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#allUsersLoanStatusTable td {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+#allUsersLoanStatusTable tbody tr:last-child td {
+    border-bottom: none;
 }
