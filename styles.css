@@ -1806,3 +1806,52 @@ body {
     outline: none;
     box-shadow: none;
 }
+
+/* 도박자 랭킹 섹션 */
+.gambler-ranking-section {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-top: 30px;
+}
+
+.gambler-ranking-section .section-title i {
+    color: #9b59b6;
+}
+
+#gamblerRankingTable {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+#gamblerRankingTable th, #gamblerRankingTable td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#gamblerRankingTable th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+#gamblerRankingTable td {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+#gamblerRankingTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+#gamblerRankingTable td:first-child {
+    font-weight: bold;
+    color: #9b59b6;
+}
+
+.gambler-ranking-section .table-container {
+    max-height: 200px;
+    overflow-y: auto;
+}

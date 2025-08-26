@@ -60,6 +60,7 @@ class PointManager {
         this.displayLoanLimits();
         this.initializeSectionStates();
         this.loadMemoContent();
+        this.displayGamblerRanking();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -201,6 +202,9 @@ class PointManager {
 
         // Memo Events
         document.getElementById('editMemoBtn').addEventListener('click', () => this.handleMemoClick());
+
+        // Gambler Ranking Events
+        document.getElementById('resetRankingBtn').addEventListener('click', () => this.handleResetGamblerRanking());
     }
 
     handleLogin() {
@@ -659,6 +663,7 @@ class PointManager {
             tryBtn.disabled = false;
             tryBtn.innerHTML = '<i class="fas fa-dice-d6"></i> 잭팟 도전!';
 
+            this.displayGamblerRanking();
         } catch (error) {
             console.error("Jackpot error:", error);
             this.showNotification('잭팟 진행 중 오류가 발생했습니다.', 'error');
@@ -776,6 +781,8 @@ class PointManager {
 
         placeBetBtn.disabled = false;
         placeBetBtn.innerHTML = '<i class="fas fa-dice"></i> 베팅하기!';
+
+        this.displayGamblerRanking();
     }
 
     async earnSelfStudyPoints() {
@@ -1324,6 +1331,88 @@ class PointManager {
         editBtn.title = '메모 수정';
 
         this.showNotification('메모가 저장되었습니다.', 'success');
+    }
+
+    handleResetGamblerRanking() {
+        this.afterPasswordCallback = () => this.resetGamblerRanking();
+        this.openPasswordModal('도박자 랭킹을 초기화하려면 비밀번호를 입력하세요.');
+    }
+
+    async resetGamblerRanking() {
+        const usersRef = ref(database, 'users');
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.val() || {};
+
+        for (const uid in usersData) {
+            const userTransactionsRef = ref(database, `users/${uid}/transactions`);
+            const userTransactionsSnapshot = await get(userTransactionsRef);
+            const userTransactions = userTransactionsSnapshot.val() || {};
+
+            const updates = {};
+            for (const txId in userTransactions) {
+                const tx = userTransactions[txId];
+                if (tx.type === 'spend' && (tx.reason.includes('잭팟') || tx.reason.includes('도박'))) {
+                    updates[txId] = null; // Set to null to remove the transaction
+                }
+            }
+            if (Object.keys(updates).length > 0) {
+                await update(userTransactionsRef, updates);
+            }
+        }
+        this.showNotification('도박자 랭킹이 초기화되었습니다.', 'success');
+        this.displayGamblerRanking(); // Refresh the ranking display
+    }
+
+    async displayGamblerRanking() {
+        const usersRef = ref(database, 'users');
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.val() || {};
+
+        const ranking = [];
+
+        for (const uid in usersData) {
+            const user = usersData[uid];
+            const transactions = user.transactions || {};
+            let totalSpent = 0;
+            let betCount = 0;
+
+            for (const txId in transactions) {
+                const tx = transactions[txId];
+                if (tx.type === 'spend' && (tx.reason.includes('잭팟') || tx.reason.includes('도박'))) {
+                    totalSpent += tx.amount;
+                    betCount++;
+                }
+            }
+
+            if (betCount > 0) {
+                ranking.push({
+                    username: user.username,
+                    totalSpent,
+                    betCount
+                });
+            }
+        }
+
+        ranking.sort((a, b) => b.totalSpent - a.totalSpent);
+
+        const tableBody = document.getElementById('gamblerRankingTableBody');
+        tableBody.innerHTML = '';
+
+        if (ranking.length > 0) {
+            ranking.forEach((player, index) => {
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${player.username}</td>
+                        <td>${player.totalSpent}P</td>
+                        <td>${player.betCount}회</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="4">아직 도박을 한 사용자가 없습니다.</td></tr>';
+        }
     }
 }
 
