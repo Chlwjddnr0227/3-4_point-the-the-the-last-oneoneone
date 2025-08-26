@@ -259,6 +259,25 @@ class PointManager {
                 const newActivityLogRef = push(newGlobalActivityRef);
                 const newActivityLogData = { ...transaction, userId: userId, username: this.currentUser.displayName || '알 수 없음' };
                 await set(newActivityLogRef, newActivityLogData);
+            } else { // Handle activity for skipped transactions (e.g., admin adjustments, transfers)
+                const globalActivityRef = ref(database, 'globalActivity');
+                const newActivityRef = push(globalActivityRef);
+                
+                let activityUsername = this.currentUser.displayName || '알 수 없음';
+                if (targetUserId) { // If it's a transaction for another user
+                    const targetUserRef = ref(database, `users/${targetUserId}`);
+                    const targetUserSnapshot = await get(targetUserRef);
+                    if (targetUserSnapshot.exists()) {
+                        activityUsername = targetUserSnapshot.val().username || '알 수 없음';
+                    }
+                }
+                const activityData = { ...transaction, userId: userId, username: activityUsername };
+                await set(newActivityRef, activityData);
+
+                const newGlobalActivityRef = ref(database, 'newGlobalActivity');
+                const newActivityLogRef = push(newGlobalActivityRef);
+                const newActivityLogData = { ...transaction, userId: userId, username: activityUsername };
+                await set(newActivityLogRef, newActivityLogData);
             }
 
             const userRef = ref(database, `users/${userId}`);
