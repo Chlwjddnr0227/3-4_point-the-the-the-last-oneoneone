@@ -62,6 +62,7 @@ class PointManager {
         this.loadMemoContent();
         this.displayGamblerRanking();
         this.displayAllUsersLoanStatus();
+        this.populateRecipientSelect();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -206,6 +207,9 @@ class PointManager {
 
         // Gambler Ranking Events
         document.getElementById('resetRankingBtn').addEventListener('click', () => this.handleResetGamblerRanking());
+
+        // Send Money Events
+        document.getElementById('sendMoneyBtn').addEventListener('click', () => this.handleSendMoney());
     }
 
     handleLogin() {
@@ -1463,6 +1467,85 @@ class PointManager {
 
         if (!hasActiveLoans) {
             tableBody.innerHTML = '<tr><td colspan="5">활성화된 대출이 없습니다.</td></tr>';
+        }
+    }
+
+    async populateRecipientSelect() {
+        // This function is no longer needed as we are using an input field.
+        // Keeping it as a placeholder for now.
+    }
+
+    async handleSendMoney() {
+        if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+
+        const recipientUsernameInput = document.getElementById('recipientUsername').value.trim();
+        const amount = parseInt(document.getElementById('sendAmount').value);
+
+        if (!recipientUsernameInput) return this.showNotification('받는 사람의 닉네임을 입력해주세요.', 'warning');
+        if (!amount || amount <= 0) return this.showNotification('송금할 포인트를 올바르게 입력해주세요.', 'warning');
+        if (this.getCurrentBalance() < amount) return this.showNotification('보유 포인트가 부족합니다.', 'error');
+
+        const usersRef = ref(database, 'users');
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.val() || {};
+
+        let recipientUid = null;
+        let recipientUsername = null;
+
+        // Try exact match first
+        for (const uid in usersData) {
+            if (usersData[uid].username === recipientUsernameInput) {
+                recipientUid = uid;
+                recipientUsername = usersData[uid].username;
+                break;
+            }
+        }
+
+        // If no exact match, try case-insensitive match
+        if (!recipientUid) {
+            for (const uid in usersData) {
+                if (usersData[uid].username.toLowerCase() === recipientUsernameInput.toLowerCase()) {
+                    recipientUid = uid;
+                    recipientUsername = usersData[uid].username;
+                    break;
+                }
+            }
+        }
+
+        if (!recipientUid) {
+            return this.showNotification('일치하는 사용자를 찾을 수 없습니다.', 'error');
+        }
+
+        if (recipientUid === this.currentUser.uid) {
+            return this.showNotification('자기 자신에게 송금할 수 없습니다.', 'error');
+        }
+
+        try {
+            // Sender's transaction (spend)
+            const senderTransaction = {
+                type: 'spend',
+                amount: amount,
+                reason: `${recipientUsername}에게 송금`,
+                timestamp: new Date().toISOString()
+            };
+            await this._saveTransaction(senderTransaction);
+
+            // Recipient's transaction (earn)
+            const recipientTransaction = {
+                type: 'earn',
+                amount: amount,
+                reason: `${this.currentUser.displayName}에게서 송금 받음`,
+                timestamp: new Date().toISOString()
+            };
+            await this._saveTransaction(recipientTransaction, null, recipientUid); // Save for recipient
+
+            this.showNotification(`${recipientUsername}에게 ${amount}P를 송금했습니다.`, 'success');
+            document.getElementById('sendAmount').value = '';
+            document.getElementById('recipientUsername').value = ''; // Reset input field
+
+        } catch (error) {
+            console.error("Send money error:", error);
+            this.showNotification('송금 처리 중 오류가 발생했습니다.', 'error');
         }
     }
 }

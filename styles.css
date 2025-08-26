@@ -1900,3 +1900,25 @@ body {
 #allUsersLoanStatusTable tbody tr:last-child td {
     border-bottom: none;
 }
+
+/* 친구에게 송금 섹션 */
+.send-money-section {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    margin-bottom: 25px;
+}
+
+.send-money-section .section-title i {
+    color: #3498db;
+}
+
+.send-money-section .submit-btn {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.send-money-section .submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
