@@ -1241,6 +1241,8 @@ class PointManager {
         this.toggleSection('jackpot-section', this.isJackpotOpen, false);
         this.toggleSection('gambling-section', this.isGamblingOpen, false);
         this.toggleSection('basic-gambling-section', this.isBasicGamblingOpen, false);
+
+        document.querySelectorAll('.closed-message').forEach(el => el.style.display = 'none');
     }
 
     handleToggleSection(e) {
@@ -1263,20 +1265,16 @@ class PointManager {
     toggleSection(sectionId, isOpen, animate = true) {
         const sectionElement = document.querySelector(`.${sectionId}`);
         const buttonIcon = sectionElement.querySelector('.toggle-section-btn i');
+        const closedMessage = sectionElement.querySelector('.closed-message');
+
         if (isOpen) {
-            if (animate) {
-                sectionElement.style.display = 'block';
-            } else {
-                sectionElement.classList.remove('closed');
-            }
+            sectionElement.classList.remove('closed');
+            if (closedMessage) closedMessage.style.display = 'none';
             buttonIcon.classList.remove('fa-eye');
             buttonIcon.classList.add('fa-eye-slash');
         } else {
-            if (animate) {
-                sectionElement.classList.add('closed');
-            } else {
-                sectionElement.style.display = 'none';
-            }
+            sectionElement.classList.add('closed');
+            if (closedMessage) closedMessage.style.display = 'block';
             buttonIcon.classList.remove('fa-eye-slash');
             buttonIcon.classList.add('fa-eye');
         }

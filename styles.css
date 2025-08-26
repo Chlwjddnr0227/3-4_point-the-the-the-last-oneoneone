@@ -621,7 +621,7 @@ body {
     color: #667eea;
 }
 
-.users-points-section .table-container {
+.table-container {
     max-height: 500px; /* 원하는 높이로 조절 가능 */
     overflow-y: auto;
 }
@@ -1757,4 +1757,17 @@ body {
 
 .closable-section.closed > *:not(.section-title) {
     display: none;
+}
+
+.donators-section .table-container,
+.loan-limit-section .table-container {
+    max-height: 200px;
+}
+
+.closed-message {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    font-size: 1.2rem;
+    color: #999;
 }
