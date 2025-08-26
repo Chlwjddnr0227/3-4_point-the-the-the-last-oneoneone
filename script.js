@@ -30,8 +30,6 @@ class PointManager {
         this.probabilities = { 2: 0.50, 3: 0.33, 5: 0.20, 10: 0.10, 15: 0.07 };
         this.afterPasswordCallback = null;
         this.userToAdjust = null;
-        this.isPriceListEditMode = false;
-        this.isContributionListEditMode = false; // New
         this.editingListType = null; // New
         this.init();
     }
@@ -51,9 +49,8 @@ class PointManager {
         this.displayBankSpendingHistory();
         this.displayUsersPoints(); // Display all users points
         this.displayJackpot();
-        this.displayPriceList();
-        this.displayContributionList(); // New
         this.displayDonations();
+        this.displayLoanLimits();
         this.updateUI();
         this.loadNewGlobalActivityLog();
     }
@@ -177,21 +174,12 @@ class PointManager {
         document.getElementById('closeAdjustModalBtn').addEventListener('click', () => this.closeModals());
         document.getElementById('clearLogBtn').addEventListener('click', () => this.handleClearLog());
 
-        // Price List Events
-        document.getElementById('editPriceListBtn').addEventListener('click', () => this.handleEditListClick('priceList'));
-        document.getElementById('addPriceItemBtn').addEventListener('click', () => this.openItemModal('priceList'));
-        document.getElementById('priceListTableBody').addEventListener('click', (e) => this.handleListActions(e, 'priceList'));
-
-        // Contribution List Events
-        document.getElementById('editContributionListBtn').addEventListener('click', () => this.handleEditListClick('contributionList'));
-        document.getElementById('addContributionItemBtn').addEventListener('click', () => this.openItemModal('contributionList'));
-        document.getElementById('contributionListTableBody').addEventListener('click', (e) => this.handleListActions(e, 'contributionList'));
-
-        // Shared Modal Events
-        document.getElementById('priceItemForm').addEventListener('submit', (e) => this.handleItemFormSubmit(e));
-        document.getElementById('closePriceItemModalBtn').addEventListener('click', () => this.closeItemModal());
-        document.getElementById('deletePriceItemBtn').addEventListener('click', () => this.handleDeleteItem());
         document.getElementById('donateBtn').addEventListener('click', () => this.handleDonation());
+
+        // Loan Limit Events
+        document.getElementById('loanLimitTableBody').addEventListener('click', (e) => this.handleEditLoanLimitClick(e));
+        document.getElementById('editLoanLimitForm').addEventListener('submit', (e) => this.saveLoanLimit(e));
+        document.getElementById('closeLoanLimitModalBtn').addEventListener('click', () => this.closeModals());
     }
 
     handleLogin() {
@@ -301,6 +289,22 @@ class PointManager {
         if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
         const amount = parseInt(document.getElementById('loanAmount').value);
         if (!amount || amount < 100) return this.showNotification('대출은 100포인트 이상부터 가능합니다.', 'warning');
+
+        const userRef = ref(database, `users/${this.currentUser.uid}`);
+        const userSnapshot = await get(userRef);
+        const userData = userSnapshot.val();
+        const loanLimit = userData.loanLimit || 1000; // Default to 1000 if not set
+
+        const loansRef = ref(database, `users/${this.currentUser.uid}/loans`);
+        const loansSnapshot = await get(loansRef);
+        const loans = loansSnapshot.val() || {};
+        const totalDebt = Object.values(loans)
+            .filter(loan => loan.status === 'active')
+            .reduce((sum, loan) => sum + loan.amountDue, 0);
+
+        if (totalDebt + amount > loanLimit) {
+            return this.showNotification(`대출 한도(${loanLimit}P)를 초과할 수 없습니다. 현재 대출 총액: ${totalDebt}P`, 'error');
+        }
 
         let reason = this.currentLoanType;
         let loanDetails = null;
@@ -417,6 +421,7 @@ class PointManager {
         document.getElementById('passwordModal').classList.add('hidden');
         document.getElementById('spendProfitModal').classList.add('hidden');
         document.getElementById('adjustPointsModal').classList.add('hidden');
+        document.getElementById('editLoanLimitModal').classList.add('hidden');
     }
 
     handlePasswordCheck(e) {
@@ -1066,206 +1071,6 @@ class PointManager {
         }
     }
 
-    // ------------------- List Management Methods -------------------
-
-    displayList(listType) {
-        const listRef = ref(database, listType);
-        onValue(listRef, (snapshot) => {
-            const items = snapshot.val() || {};
-            this.renderList(listType, items);
-        });
-    }
-
-    displayPriceList() {
-        this.displayList('priceList');
-    }
-
-    displayContributionList() {
-        this.displayList('contributionList');
-    }
-
-    renderList(listType, items) {
-        const isEditMode = listType === 'priceList' ? this.isPriceListEditMode : this.isContributionListEditMode;
-        const tableBody = document.getElementById(`${listType}TableBody`);
-        
-        tableBody.innerHTML = '';
-        const sortedItems = Object.keys(items).map(key => ({ id: key, ...items[key] })).sort((a, b) => a.name.localeCompare(b.name));
-
-        if (sortedItems.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="${isEditMode ? 3 : 2}" style="text-align:center; padding: 20px;">아직 항목이 없습니다.</td></tr>`;
-            return;
-        }
-
-        sortedItems.forEach(item => {
-            const row = document.createElement('tr');
-            row.dataset.id = item.id;
-
-            let rowHTML = `
-                <td class="item-name">${item.name}</td>
-                <td class="item-price">${item.price}P</td>
-            `;
-
-            if (isEditMode) {
-                rowHTML += `
-                <td class="item-actions">
-                    <div class="action-btn-group">
-                        <button class="edit-item-btn" title="수정"><i class="fas fa-pencil-alt"></i></button>
-                        <button class="delete-item-btn" title="삭제"><i class="fas fa-trash"></i></button>
-                    </div>
-                </td>`;
-            }
-            row.innerHTML = rowHTML;
-            tableBody.appendChild(row);
-        });
-    }
-
-    handleEditListClick(listType) {
-        this.afterPasswordCallback = () => this.toggleListEditMode(listType);
-        const message = listType === 'priceList' ? '가격표를 수정하려면 비밀번호를 입력하세요.' : '기준표를 수정하려면 비밀번호를 입력하세요.';
-        this.openPasswordModal(message);
-    }
-
-    toggleListEditMode(listType) {
-        const editModeFlag = listType === 'priceList' ? 'isPriceListEditMode' : 'isContributionListEditMode';
-        this[editModeFlag] = !this[editModeFlag];
-        
-        const editBtn = document.getElementById(`edit${listType.charAt(0).toUpperCase() + listType.slice(1)}Btn`);
-        const addBtn = document.getElementById(`add${listType.charAt(0).toUpperCase() + listType.slice(1)}ItemBtn`);
-        const editHeader = document.querySelector(`#${listType}Table .${listType.slice(0, -4)}-edit-header`);
-
-        editBtn.classList.toggle('active', this[editModeFlag]);
-        addBtn.classList.toggle('hidden', !this[editModeFlag]);
-        if(editHeader) editHeader.classList.toggle('hidden', !this[editModeFlag]);
-
-        if (this[editModeFlag]) {
-            editBtn.innerHTML = '<i class="fas fa-check"></i>';
-            editBtn.title = '수정 완료';
-        } else {
-            editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-            editBtn.title = listType === 'priceList' ? '가격표 수정' : '기준표 수정';
-        }
-
-        const listRef = ref(database, listType);
-        get(listRef).then(snapshot => {
-            const items = snapshot.val() || {};
-            this.renderList(listType, items);
-        });
-    }
-
-    openItemModal(listType, item = null) {
-        this.editingListType = listType;
-        const modal = document.getElementById('priceItemModal');
-        const modalTitle = document.getElementById('priceItemModalTitle');
-        const form = document.getElementById('priceItemForm');
-        const deleteBtn = document.getElementById('deletePriceItemBtn');
-        const nameLabel = form.querySelector('label[for="itemNameInput"]');
-        const priceLabel = form.querySelector('label[for="itemPriceInput"]');
-
-        form.reset();
-        document.getElementById('priceItemId').value = '';
-
-        if (listType === 'priceList') {
-            modalTitle.textContent = item ? '물품 수정' : '물품 추가';
-            nameLabel.textContent = '물품 이름';
-            priceLabel.textContent = '가격';
-        } else {
-            modalTitle.textContent = item ? '활동 수정' : '활동 추가';
-            nameLabel.textContent = '활동 이름';
-            priceLabel.textContent = '지급 포인트';
-        }
-
-        if (item) {
-            document.getElementById('priceItemId').value = item.id;
-            document.getElementById('itemNameInput').value = item.name;
-            document.getElementById('itemPriceInput').value = item.price;
-            deleteBtn.classList.remove('hidden');
-        } else {
-            deleteBtn.classList.add('hidden');
-        }
-
-        modal.classList.remove('hidden');
-    }
-
-    closeItemModal() {
-        document.getElementById('priceItemModal').classList.add('hidden');
-        this.editingListType = null;
-    }
-
-    async handleItemFormSubmit(e) {
-        e.preventDefault();
-        if (!this.editingListType) return;
-
-        const id = document.getElementById('priceItemId').value;
-        const name = document.getElementById('itemNameInput').value.trim();
-        const price = parseInt(document.getElementById('itemPriceInput').value);
-
-        if (!name || isNaN(price) || price < 0) {
-            return this.showNotification('이름과 값을 올바르게 입력하세요.', 'warning');
-        }
-
-        const itemData = { name, price };
-        const listType = this.editingListType;
-
-        try {
-            let itemRef;
-            if (id) {
-                itemRef = ref(database, `${listType}/${id}`);
-            } else {
-                itemRef = push(ref(database, listType));
-            }
-            await set(itemRef, itemData);
-            this.showNotification(id ? '항목이 수정되었습니다.' : '항목이 추가되었습니다.', 'success');
-            this.closeItemModal();
-        } catch (error) {
-            console.error("Item save error:", error);
-            this.showNotification('항목 저장 중 오류가 발생했습니다.', 'error');
-        }
-    }
-
-    handleListActions(e, listType) {
-        const isEditMode = listType === 'priceList' ? this.isPriceListEditMode : this.isContributionListEditMode;
-        if (!isEditMode) return;
-
-        const target = e.target.closest('button');
-        if (!target) return;
-
-        const row = target.closest('tr');
-        const itemId = row.dataset.id;
-
-        const listRef = ref(database, `${listType}/${itemId}`);
-        get(listRef).then(snapshot => {
-            if (!snapshot.exists()) {
-                this.showNotification('해당 항목을 찾을 수 없습니다.', 'error');
-                return;
-            }
-            const item = { id: itemId, ...snapshot.val() };
-
-            if (target.classList.contains('edit-item-btn') || target.classList.contains('delete-item-btn')) {
-                this.openItemModal(listType, item);
-            }
-        });
-    }
-
-    async handleDeleteItem() {
-        if (!this.editingListType) return;
-        const listType = this.editingListType;
-        const id = document.getElementById('priceItemId').value;
-        if (!id) return;
-
-        if (!confirm('정말로 이 항목을 삭제하시겠습니까?')) {
-            return;
-        }
-
-        try {
-            await set(ref(database, `${listType}/${id}`), null);
-            this.showNotification('항목이 삭제되었습니다.', 'success');
-            this.closeItemModal();
-        } catch (error) {
-            console.error("Item delete error:", error);
-            this.showNotification('항목 삭제 중 오류가 발생했습니다.', 'error');
-        }
-    }
-
     async handleDonation() {
         if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
 
@@ -1328,6 +1133,74 @@ class PointManager {
                 tableBody.innerHTML = '<tr><td colspan="3">아직 기부자가 없습니다.</td></tr>';
             }
         });
+    }
+
+    displayLoanLimits() {
+        const usersRef = ref(database, 'users');
+        onValue(usersRef, (snapshot) => {
+            const usersData = snapshot.val() || {};
+            const tableBody = document.getElementById('loanLimitTableBody');
+            tableBody.innerHTML = '';
+
+            const sortedUsers = Object.keys(usersData).map(uid => ({
+                uid,
+                ...usersData[uid]
+            })).sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+            if (sortedUsers.length > 0) {
+                sortedUsers.forEach(user => {
+                    const loanLimit = user.loanLimit === undefined ? 1000 : user.loanLimit;
+                    const row = `
+                        <tr>
+                            <td>${user.username || '알 수 없음'}</td>
+                            <td>${loanLimit}P</td>
+                            <td>
+                                <button class="edit-loan-limit-btn" data-uid="${user.uid}" data-username="${user.username}" data-limit="${loanLimit}">수정</button>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">사용자가 없습니다.</td></tr>';
+            }
+        });
+    }
+
+    handleEditLoanLimitClick(e) {
+        if (e.target && e.target.classList.contains('edit-loan-limit-btn')) {
+            const target = e.target;
+            const userData = {
+                uid: target.dataset.uid,
+                username: target.dataset.username,
+                limit: parseInt(target.dataset.limit)
+            };
+            this.afterPasswordCallback = () => this.openEditLoanLimitModal(userData);
+            this.openPasswordModal('대출 한도를 수정하려면 비밀번호를 입력하세요.');
+        }
+    }
+
+    openEditLoanLimitModal(userData) {
+        document.getElementById('loanLimitUsername').textContent = userData.username;
+        document.getElementById('newLoanLimitInput').value = userData.limit;
+        document.getElementById('loanLimitUserId').value = userData.uid;
+        document.getElementById('editLoanLimitModal').classList.remove('hidden');
+    }
+
+    async saveLoanLimit(e) {
+        e.preventDefault();
+        const userId = document.getElementById('loanLimitUserId').value;
+        const newLimit = parseInt(document.getElementById('newLoanLimitInput').value);
+
+        if (!userId || isNaN(newLimit) || newLimit < 0) {
+            return this.showNotification('유효한 한도를 입력하세요.', 'warning');
+        }
+
+        const userLoanLimitRef = ref(database, `users/${userId}/loanLimit`);
+        await set(userLoanLimitRef, newLimit);
+
+        this.showNotification('대출 한도가 성공적으로 수정되었습니다.', 'success');
+        this.closeModals();
     }
 }
 

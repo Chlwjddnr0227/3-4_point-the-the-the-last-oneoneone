@@ -110,51 +110,6 @@
                         <i class="fas fa-dice"></i> 베팅하기!
                     </button>
                 </div>
-
-                <div class="price-list-section">
-                    <h3 class="section-title">
-                        <i class="fas fa-tags"></i> 물품 가격표
-                        <button id="editPriceListBtn" class="edit-btn" title="가격표 수정"><i class="fas fa-edit"></i></button>
-                    </h3>
-                    <div class="table-container">
-                        <table id="priceListTable">
-                            <thead>
-                                <tr>
-                                    <th>물품</th>
-                                    <th>가격</th>
-                                    <th class="price-edit-header hidden">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="priceListTableBody">
-                                <!-- 가격표 아이템이 여기에 동적으로 추가됩니다 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <button id="addPriceItemBtn" class="add-btn hidden"><i class="fas fa-plus"></i> 물품 추가</button>
-                </div>
-
-                <div class="price-list-section"> <!-- I'll reuse the class for styling -->
-                    <h3 class="section-title">
-                        <i class="fas fa-hands-helping"></i> <!-- New Icon -->
-                        사회적 기여 활동 및 포인트 지급 기준
-                        <button id="editContributionListBtn" class="edit-btn" title="기준표 수정"><i class="fas fa-edit"></i></button>
-                    </h3>
-                    <div class="table-container">
-                        <table id="contributionListTable">
-                            <thead>
-                                <tr>
-                                    <th>활동</th>
-                                    <th>지급 포인트</th>
-                                    <th class="contribution-edit-header hidden">관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="contributionListTableBody">
-                                <!-- 기여 활동 아이템이 여기에 동적으로 추가됩니다 -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <button id="addContributionItemBtn" class="add-btn hidden"><i class="fas fa-plus"></i> 활동 추가</button>
-                </div>
             </div>
             
             <!-- 중앙 컬럼: 포인트 관리 -->
@@ -277,6 +232,24 @@
                             </thead>
                             <tbody id="loanStatusBody">
                                 <!-- 대출 내역이 여기에 동적으로 추가됩니다 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="loan-limit-section">
+                    <h3 class="section-title"><i class="fas fa-user-shield"></i> 사용자별 대출 한도</h3>
+                    <div class="table-container">
+                        <table id="loanLimitTable">
+                            <thead>
+                                <tr>
+                                    <th>사용자</th>
+                                    <th>대출 한도</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loanLimitTableBody">
+                                <!-- 대출 한도 내역이 여기에 동적으로 추가됩니다 -->
                             </tbody>
                         </table>
                     </div>
@@ -511,6 +484,24 @@
                     <button type="submit" class="submit-btn">저장</button>
                     <button type="button" id="closePriceItemModalBtn" class="cancel-btn">취소</button>
                     <button type="button" id="deletePriceItemBtn" class="delete-btn hidden">삭제</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editLoanLimitModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3 class="modal-title">대출 한도 수정</h3>
+            <p><strong id="loanLimitUsername"></strong> 님의 대출 한도를 변경합니다.</p>
+            <form id="editLoanLimitForm">
+                <input type="hidden" id="loanLimitUserId">
+                <div class="form-group">
+                    <label for="newLoanLimitInput">새 대출 한도</label>
+                    <input type="number" id="newLoanLimitInput" required min="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="submit-btn">저장</button>
+                    <button type="button" id="closeLoanLimitModalBtn" class="cancel-btn">취소</button>
                 </div>
             </form>
         </div>
