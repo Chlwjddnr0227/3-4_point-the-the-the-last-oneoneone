@@ -57,6 +57,7 @@ class PointManager {
         this.displayUsersPoints(); // Display all users points
         this.displayJackpot();
         this.displayDonations();
+        this.displayBankDonorRanking(); // New: Display bank donor ranking
         this.displayLoanLimits();
         this.initializeSectionStates();
         this.loadMemoContent();
@@ -1207,6 +1208,48 @@ class PointManager {
         });
     }
 
+    displayBankDonorRanking() {
+        const donationsRef = ref(database, 'donations');
+        onValue(donationsRef, (snapshot) => {
+            const donations = snapshot.val() || {};
+            const donorTotals = {};
+
+            // Calculate total donation for each user
+            for (const donationId in donations) {
+                const donation = donations[donationId];
+                if (donorTotals[donation.username]) {
+                    donorTotals[donation.username] += donation.amount;
+                } else {
+                    donorTotals[donation.username] = donation.amount;
+                }
+            }
+
+            // Convert to array and sort by total donation
+            const ranking = Object.keys(donorTotals).map(username => ({
+                username,
+                totalDonation: donorTotals[username]
+            })).sort((a, b) => b.totalDonation - a.totalDonation);
+
+            const tableBody = document.getElementById('bankDonorRankingTableBody');
+            tableBody.innerHTML = '';
+
+            if (ranking.length > 0) {
+                ranking.forEach((donor, index) => {
+                    const row = `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${donor.username}</td>
+                            <td>${donor.totalDonation}P</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="3">아직 기부자가 없습니다.</td></tr>';
+            }
+        });
+    }
+
     displayLoanLimits() {
         const usersRef = ref(database, 'users');
         onValue(usersRef, (snapshot) => {
@@ -1301,27 +1344,46 @@ class PointManager {
     }
 
     toggleSection(sectionId, isOpen, animate = true) {
-        const sectionElement = document.querySelector(`.${sectionId}`);
+        const sectionElement = document.getElementById(sectionId); // Changed to getElementById
+        if (!sectionElement) {
+            console.warn(`Section element with ID ${sectionId} not found.`); // Updated warning
+            return;
+        }
         const buttonIcon = sectionElement.querySelector('.toggle-section-btn i');
         const closedMessage = sectionElement.querySelector('.closed-message');
+
+        if (!buttonIcon) {
+            console.warn(`Button icon not found in section ${sectionId}.`);
+        }
+        if (!closedMessage) {
+            console.warn(`Closed message not found in section ${sectionId}.`);
+        }
 
         if (isOpen) {
             sectionElement.classList.remove('closed');
             if (closedMessage) closedMessage.style.display = 'none';
-            buttonIcon.classList.remove('fa-eye');
-            buttonIcon.classList.add('fa-eye-slash');
+            if (buttonIcon) {
+                buttonIcon.classList.remove('fa-eye');
+                buttonIcon.classList.add('fa-eye-slash');
+            }
         } else {
             sectionElement.classList.add('closed');
             if (closedMessage) closedMessage.style.display = 'block';
-            buttonIcon.classList.remove('fa-eye-slash');
-            buttonIcon.classList.add('fa-eye');
+            if (buttonIcon) {
+                buttonIcon.classList.remove('fa-eye-slash');
+                buttonIcon.classList.add('fa-eye');
+            }
         }
     }
 
     loadMemoContent() {
         const memoRef = ref(database, 'memo/content');
         onValue(memoRef, (snapshot) => {
-            const memoContent = snapshot.val() || '<p>여기에 공지사항을 입력하세요.</p>';
+            let memoContent = snapshot.val();
+            // Only set default if content is truly empty from Firebase, do NOT save it back here.
+            if (memoContent === null || memoContent === undefined || memoContent.trim() === '') {
+                memoContent = '<p>여기에 공지사항을 입력하세요.</p>';
+            }
             document.getElementById('memo-content').innerHTML = memoContent;
         });
     }
@@ -1346,7 +1408,11 @@ class PointManager {
     }
 
     async saveMemoContent() {
-        const memoContent = document.getElementById('memo-content').innerHTML;
+        let memoContent = document.getElementById('memo-content').innerHTML;
+        // Ensure empty content is saved as a default paragraph
+        if (memoContent.trim() === '') {
+            memoContent = '<p>여기에 공지사항을 입력하세요.</p>';
+        }
         const memoRef = ref(database, 'memo/content');
         await set(memoRef, memoContent);
 

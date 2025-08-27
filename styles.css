@@ -6,6 +6,21 @@
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #667eea;
+    --accent-color: #ffd700; /* Gold for ranking */
+    --section-bg-color: white;
+    --box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    --border-color: #f0f0f0;
+    --table-header-bg: #f8f9fa;
+    --table-header-text: #666;
+    --table-row-even-bg: #fdfdfd;
+    --table-row-hover-bg: #f5f5f5;
+    --gold-color: #FFD700;
+    --silver-color: #C0C0C0;
+    --bronze-color: #CD7F32;
+}
+
 .hidden {
     display: none !important;
 }
@@ -1174,7 +1189,7 @@ body {
 
 .use-profit-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 5px 10px rgba(255, 193, 7, 0.3);
+    box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
 }
 
 .bank-spending-section {
@@ -1636,10 +1651,6 @@ body {
 
 
 
-
-
-
-
 /* 기부 섹션 */
 .donation-section {
     background: white;
@@ -1921,4 +1932,90 @@ body {
 .send-money-section .submit-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
+/* Bank Donor Ranking Section */
+.bank-donor-ranking-section {
+    background-color: var(--section-bg-color);
+    border-radius: 15px; /* Slightly more rounded */
+    padding: 25px; /* Increased padding */
+    margin-top: 30px; /* Consistent with other sections */
+    box-shadow: var(--box-shadow);
+    overflow: hidden; /* Ensure content stays within bounds */
+}
+
+.bank-donor-ranking-section .section-title {
+    color: var(--primary-color);
+    margin-bottom: 20px; /* Increased margin */
+    font-size: 1.5em; /* Slightly larger title */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between icon and text */
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--border-color); /* Thicker border */
+}
+
+.bank-donor-ranking-section .section-title i {
+    margin-right: 0; /* Reset margin, use gap instead */
+    color: var(--accent-color); /* Gold color for trophy icon */
+}
+
+.bank-donor-ranking-section .table-container {
+    max-height: 350px; /* Increased height for more scrollable content */
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 10px; /* Slightly more rounded */
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Inner shadow for depth */
+}
+
+.bank-donor-ranking-section table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95em;
+}
+
+.bank-donor-ranking-section th,
+.bank-donor-ranking-section td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bank-donor-ranking-section th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.bank-donor-ranking-section tbody tr:nth-child(even) {
+    background-color: var(--table-row-even-bg);
+}
+
+.bank-donor-ranking-section tbody tr:hover {
+    background-color: var(--table-row-hover-bg);
+}
+
+/* Styling for ranking positions */
+.bank-donor-ranking-section tbody tr:nth-child(1) td:first-child {
+    color: var(--gold-color);
+    font-size: 1.2em;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.bank-donor-ranking-section tbody tr:nth-child(2) td:first-child {
+    color: var(--silver-color);
+    font-size: 1.1em;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.bank-donor-ranking-section tbody tr:nth-child(3) td:first-child {
+    color: var(--bronze-color);
+    font-size: 1.05em;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}
+
+.bank-donor-ranking-section td:first-child {
+    font-weight: bold;
 }
