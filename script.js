@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-import { getDatabase, ref, get, set, push, onValue, update, increment, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+import { getDatabase, ref, get, set, push, onValue, update, increment, serverTimestamp, child } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
 // Firebase 설정
 const firebaseConfig = {
@@ -59,7 +59,7 @@ class PointManager {
         this.displayDonations();
         this.displayBankDonorRanking(); // New: Display bank donor ranking
         this.displayLoanLimits();
-        this.initializeSectionStates();
+        this.loadSectionStates(); // New: Load and apply section states from Firebase
         this.loadMemoContent();
         this.displayGamblerRanking();
         this.displayAllUsersLoanStatus();
@@ -635,6 +635,7 @@ class PointManager {
 
     async tryJackpot() {
         if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+        if (!this.isJackpotOpen) return this.showNotification('잭팟 시스템이 현재 닫혀있습니다.', 'info'); // New check
         
         const tryBtn = document.getElementById('tryJackpotBtn');
         if (tryBtn.disabled) return;
@@ -763,6 +764,14 @@ class PointManager {
 
     async placeBet(type = 'standard') {
         if (!this.currentUser) return this.showNotification('로그인이 필요합니다.', 'warning');
+        
+        // New check for gambling section state
+        if (type === 'standard' && !this.isGamblingOpen) {
+            return this.showNotification('확률 도박기가 현재 닫혀있습니다.', 'info');
+        }
+        if (type === 'basic' && !this.isBasicGamblingOpen) {
+            return this.showNotification('기본 확률 도박기가 현재 닫혀있습니다.', 'info');
+        }
 
         const betAmount = type === 'standard' ? this.gamblingBetAmount : this.basicGamblingBetAmount;
         const multiplier = type === 'standard' ? this.gamblingMultiplier : this.basicGamblingMultiplier;
@@ -1282,6 +1291,21 @@ class PointManager {
         });
     }
 
+    loadSectionStates() {
+        const sectionStatesRef = ref(database, 'globalStats/sectionStates');
+        onValue(sectionStatesRef, (snapshot) => {
+            const states = snapshot.val() || {};
+            this.isJackpotOpen = states['jackpot-section'] !== undefined ? states['jackpot-section'] : true;
+            this.isGamblingOpen = states['gambling-section'] !== undefined ? states['gambling-section'] : true;
+            this.isBasicGamblingOpen = states['basic-gambling-section'] !== undefined ? states['basic-gambling-section'] : true;
+
+            // Apply the loaded states to the UI
+            this.toggleSection('jackpot-section', this.isJackpotOpen, false);
+            this.toggleSection('gambling-section', this.isGamblingOpen, false);
+            this.toggleSection('basic-gambling-section', this.isBasicGamblingOpen, false);
+        });
+    }
+
     handleEditLoanLimitClick(e) {
         if (e.target && e.target.classList.contains('edit-loan-limit-btn')) {
             const target = e.target;
@@ -1329,15 +1353,23 @@ class PointManager {
     handleToggleSection(e) {
         const sectionId = e.currentTarget.dataset.section;
         this.afterPasswordCallback = () => {
+            const sectionStatesRef = ref(database, 'globalStats/sectionStates');
+            let newState;
             if (sectionId === 'jackpot-section') {
-                this.isJackpotOpen = !this.isJackpotOpen;
-                this.toggleSection(sectionId, this.isJackpotOpen);
+                newState = !this.isJackpotOpen;
+                this.isJackpotOpen = newState;
+                this.toggleSection(sectionId, newState);
+                set(child(sectionStatesRef, 'jackpot-section'), newState);
             } else if (sectionId === 'gambling-section') {
-                this.isGamblingOpen = !this.isGamblingOpen;
-                this.toggleSection(sectionId, this.isGamblingOpen);
+                newState = !this.isGamblingOpen;
+                this.isGamblingOpen = newState;
+                this.toggleSection(sectionId, newState);
+                set(child(sectionStatesRef, 'gambling-section'), newState);
             } else if (sectionId === 'basic-gambling-section') {
-                this.isBasicGamblingOpen = !this.isBasicGamblingOpen;
-                this.toggleSection(sectionId, this.isBasicGamblingOpen);
+                newState = !this.isBasicGamblingOpen;
+                this.isBasicGamblingOpen = newState;
+                this.toggleSection(sectionId, newState);
+                set(child(sectionStatesRef, 'basic-gambling-section'), newState);
             }
         };
         this.openPasswordModal('섹션을 열거나 닫으려면 비밀번호를 입력하세요.');
